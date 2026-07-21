@@ -125,7 +125,7 @@ if menu == "Startseite & Tagebuch":
       return "🔴"
 
 
-  # --- GROSSER GRÜNER CONTAINER (umfasst alles inklusive Überstand unten) ---
+  # --- PERFEKT ANGEPASSTER GRÜNER CONTAINER ---
   st.markdown(
       """
         <style>
@@ -259,20 +259,15 @@ if menu == "Startseite & Tagebuch":
 
   st.write("")
 
-  # Blauer Button "Eintrag erstellen" innerhalb des großen Containers
+  # Blauer Button "Eintrag erstellen" (jetzt als letztes Element INNERHALB des Containers)
   if st.button("➕ Eintrag erstellen", use_container_width=True, type="primary"):
     st.session_state.eintrag_modal_aktiv = True
     st.rerun()
 
-  # Kleiner optischer Abstand nach unten innerhalb des Containers
-  st.markdown(
-      "<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True
-  )
-
-  # Ende des großen grünen Containers
+  # Ende des großen grünen Containers (schließt direkt unter dem blauen Button ab)
   st.markdown("</div>", unsafe_allow_html=True)
 
-  # Formular für Eintrag (öffnet sich außerhalb, wenn Button geklickt)
+  # Formular für Eintrag (öffnet sich außerhalb, wenn Button geklickt wurde)
   if st.session_state.get("eintrag_modal_aktiv", False):
     st.write("### 📝 Neuen Eintrag erfassen")
     with st.form(key="kategorie_form"):
