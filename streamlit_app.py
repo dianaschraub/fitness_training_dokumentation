@@ -125,10 +125,30 @@ if menu == "Startseite & Tagebuch":
       return "🔴"
 
 
-  # --- ECHTER HTML-GRÜNER CONTAINER FÜR DEN GESAMTEN BEREICH ---
+  # --- CSS FÜR GRÜNEN HINTERGRUND UND BLAUEN BUTTON ---
   st.markdown(
       """
-        <div style="background-color: #e2efe3; border: 1px solid #c8dbc9; border-radius: 14px; padding: 20px; margin-bottom: 25px;">
+        <style>
+        .green-wrapper {
+            background-color: #e2efe3;
+            border: 1px solid #c8dbc9;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        /* Zwingt den Eintrag erstellen Button zum sauberen Blau */
+        div.stButton > button:first-child {
+            background-color: #0077b6 !important;
+            color: white !important;
+            border-radius: 8px !important;
+            font-weight: bold !important;
+            border: none !important;
+        }
+        div.stButton > button:first-child:hover {
+            background-color: #023e8a !important;
+        }
+        </style>
+        <div class="green-wrapper">
         """,
       unsafe_allow_html=True,
   )
@@ -136,7 +156,7 @@ if menu == "Startseite & Tagebuch":
   # Wochen-Kopfzeile
   col_w1, col_w2, col_w3 = st.columns([1, 4, 1])
   with col_w1:
-    if st.button("⬅️", use_container_width=True):
+    if st.button("⬅️", key="w_back", use_container_width=True):
       st.session_state.wochen_ansicht_aktiv = (
           not st.session_state.wochen_ansicht_aktiv
       )
@@ -147,7 +167,7 @@ if menu == "Startseite & Tagebuch":
         if st.session_state.wochen_ansicht_aktiv
         else f"Woche {kalenderwoche} (Details anzeigen)"
     )
-    if st.button(wochen_titel_text, use_container_width=True):
+    if st.button(wochen_titel_text, key="w_title", use_container_width=True):
       st.session_state.wochen_ansicht_aktiv = (
           not st.session_state.wochen_ansicht_aktiv
       )
@@ -157,7 +177,7 @@ if menu == "Startseite & Tagebuch":
         unsafe_allow_html=True,
     )
   with col_w3:
-    if st.button("➡️", use_container_width=True):
+    if st.button("➡️", key="w_fwd", use_container_width=True):
       st.session_state.wochen_ansicht_aktiv = (
           not st.session_state.wochen_ansicht_aktiv
       )
@@ -287,14 +307,16 @@ if menu == "Startseite & Tagebuch":
   st.write("")
 
   # Blauer Button "Eintrag erstellen"
-  if st.button("➕ Eintrag erstellen", use_container_width=True, type="primary"):
+  if st.button(
+      "➕ Eintrag erstellen", key="btn_create", use_container_width=True
+  ):
     st.session_state.eintrag_modal_aktiv = True
     st.rerun()
 
-  # Ende des HTML-Grün-Containers
+  # Schließen des grünen HTML-Containers
   st.markdown("</div>", unsafe_allow_html=True)
 
-  # Formular für Eintrag (öffnet sich außerhalb des Containers)
+  # Formular für Eintrag (außerhalb des grünen Containers)
   if st.session_state.get("eintrag_modal_aktiv", False):
     st.write("### 📝 Neuen Eintrag erfassen")
     with st.form(key="kategorie_form"):
@@ -317,7 +339,7 @@ if menu == "Startseite & Tagebuch":
 
       col_s1, col_s2 = st.columns(2)
       with col_s1:
-        save_btn = st.form_submit_button("Speichern", type="primary")
+        save_btn = st.form_submit_button("Speichern")
       with col_s2:
         cancel_btn = st.form_submit_button("Abbrechen")
 
