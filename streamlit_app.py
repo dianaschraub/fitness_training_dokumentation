@@ -293,9 +293,16 @@ if True:
 
   # --- Automatische Datums- und Wochenberechnung ---
   heute = datetime.date.today()
-  jahr, kalenderwoche, wochentag = heute.isocalendar()
 
-  start_der_woche = heute - datetime.timedelta(days=wochentag - 1)
+  if "wochen_offset" not in st.session_state:
+    st.session_state.wochen_offset = 0
+
+  referenz_datum = heute + datetime.timedelta(
+      weeks=st.session_state.wochen_offset
+  )
+  jahr, kalenderwoche, wochentag = referenz_datum.isocalendar()
+
+  start_der_woche = referenz_datum - datetime.timedelta(days=wochentag - 1)
   ende_der_woche = start_der_woche + datetime.timedelta(days=6)
 
   monate = [
@@ -342,7 +349,12 @@ if True:
   def get_cat_minutes(kat_name):
     if df.empty or kat_name not in df["Kategorie"].values:
       return 0
-    return int(df[df["Kategorie"] == kat_name]["Minuten"].sum())
+    woche_df = df[
+        (df["Datum"] >= str(start_der_woche))
+        & (df["Datum"] <= str(ende_der_woche))
+        & (df["Kategorie"] == kat_name)
+    ]
+    return int(woche_df["Minuten"].sum())
 
   def get_today_minutes(kat_name):
     if df.empty:
@@ -472,9 +484,7 @@ if True:
     col_w1, col_w2, col_w3 = st.columns([1, 4, 1])
     with col_w1:
       if st.button("⬅️", key="w_back", use_container_width=True):
-        st.session_state.wochen_ansicht_aktiv = (
-            not st.session_state.wochen_ansicht_aktiv
-        )
+        st.session_state.wochen_offset -= 1
         st.rerun()
     with col_w2:
       wochen_titel_text = (
@@ -492,10 +502,14 @@ if True:
           unsafe_allow_html=True,
       )
     with col_w3:
-      if st.button("➡️", key="w_fwd", use_container_width=True):
-        st.session_state.wochen_ansicht_aktiv = (
-            not st.session_state.wochen_ansicht_aktiv
+      # Vorwärts-Navigation bis Ende des Jahres 2040 begrenzen
+      naechste_woche_ende = ende_der_woche + datetime.timedelta(weeks=1)
+      if naechste_woche_ende.year > 2040:
+        st.button(
+            "➡️", key="w_fwd", use_container_width=True, disabled=True
         )
+      elif st.button("➡️", key="w_fwd", use_container_width=True):
+        st.session_state.wochen_offset += 1
         st.rerun()
 
     # BEREICH: WOCHE
@@ -744,9 +758,13 @@ if True:
     st.write("### 📊 Detail-Auswertung der Kategorien (3x2)")
 
     def get_cat_stats(kat_name):
-      if df.empty or kat_name not in df["Kategorie"].values:
+      woche_df_all = df[
+          (df["Datum"] >= str(start_der_woche))
+          & (df["Datum"] <= str(ende_der_woche))
+      ]
+      if woche_df_all.empty or kat_name not in woche_df_all["Kategorie"].values:
         return 0, "Noch keine Einträge", "⚪"
-      kat_df = df[df["Kategorie"] == kat_name]
+      kat_df = woche_df_all[woche_df_all["Kategorie"] == kat_name]
       min_sum = kat_df["Minuten"].sum()
       if min_sum >= 90:
         return min_sum, f"{min_sum} min (Ausreichend)", "🟢"
@@ -798,7 +816,14 @@ if True:
             unsafe_allow_html=True,
         )
 
-    gesamt_minuten = df["Minuten"].sum() if not df.empty else 0
+    gesamt_minuten = (
+        df[
+            (df["Datum"] >= str(start_der_woche))
+            & (df["Datum"] <= str(ende_der_woche))
+        ]["Minuten"].sum()
+        if not df.empty
+        else 0
+    )
     if gesamt_minuten >= 90:
       g_sym, g_text = "🟢", f"{gesamt_minuten} min — Ausreichend (Ziel erreicht)"
     elif gesamt_minuten >= 60:
