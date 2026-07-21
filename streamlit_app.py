@@ -1,3 +1,4 @@
+
 import datetime
 import pandas as pd
 import streamlit as st
@@ -42,7 +43,7 @@ menu = st.sidebar.selectbox(
 )
 
 # ----------------------------------------------------
-# 1. STARTSEITE & TAGEBUCH (mit automatischem Datum)
+# 1. STARTSEITE & TAGEBUCH (mit kategorisierter Anzeige)
 # ----------------------------------------------------
 if menu == "Startseite & Tagebuch":
   st.title("Tagebuch")
@@ -53,11 +54,9 @@ if menu == "Startseite & Tagebuch":
   heute = datetime.date.today()
   jahr, kalenderwoche, wochentag = heute.isocalendar()
 
-  # Montag und Sonntag der aktuellen Woche berechnen
   start_der_woche = heute - datetime.timedelta(days=wochentag - 1)
   ende_der_woche = start_der_woche + datetime.timedelta(days=6)
 
-  # Monate für die deutsche Anzeige formatieren
   monate = [
       "Jan",
       "Feb",
@@ -85,9 +84,8 @@ if menu == "Startseite & Tagebuch":
         f"{start_der_woche.day}. {start_monat} - {ende_der_woche.day}."
         f" {ende_monat} {ende_der_woche.year}"
     )
-  # -------------------------------------------------
 
-  # Wochen-Kopfzeile mit den berechneten Werten
+  # Wochen-Kopfzeile
   col_w1, col_w2, col_w3 = st.columns([1, 4, 1])
   with col_w1:
     st.markdown("### ⬅️")
@@ -100,48 +98,70 @@ if menu == "Startseite & Tagebuch":
   with col_w3:
     st.markdown("### ➡️")
 
-  # Gesamtminuten aus Protokoll berechnen
-  if not st.session_state.protokoll.empty:
-    gesamt_minuten = st.session_state.protokoll["Minuten"].sum()
-  else:
-    gesamt_minuten = 0
+  st.write("---")
 
-  # Ampel-Logik für Startseite (Grün >= 90, Gelb >= 60, Rot < 60)
-  if gesamt_minuten >= 90:
-    status_text = "🟢 Ausreichend (Grün)"
-  elif gesamt_minuten >= 60:
-    status_text = "🟡 Mittel (Gelb)"
-  else:
-    status_text = "🔴 Zu wenig (Rot)"
-
-  # Infobox
-  st.info(
-      f"**Wochenstatus:** {gesamt_minuten} Minuten trainiert — **Status:**"
-      f" {status_text}"
-  )
-
-  # Button "Eintrag erstellen" auf der Startseite
-  st.write("")
+  # Button "Eintrag erstellen" oben
   if st.button("➕ Eintrag erstellen", use_container_width=True, type="primary"):
     st.session_state.nav_override = "Eintrag erstellen (Kategorien)"
     st.rerun()
 
-  st.write("---")
-  st.write("### Bisherige Einträge dieser Woche")
-  if not st.session_state.protokoll.empty:
-    st.dataframe(st.session_state.protokoll, use_container_width=True)
+  st.write("### Auswertung nach Kategorien")
 
-    # Excel-Export Button
+  # Hilfsfunktion, um Minuten und Status pro Kategorie zu berechnen
+  df = st.session_state.protokoll
+
+  def get_cat_stats(kat_name):
+    if df.empty or kat_name not in df["Kategorie"].values:
+      return 0, "Noch keine Einträge", "⚪"
+    kat_df = df[df["Kategorie"] == kat_name]
+    min_sum = kat_df["Minuten"].sum()
+    if min_sum >= 90:
+      return min_sum, f"{min_sum} min (Ausreichend)", "🟢"
+    elif min_sum >= 60:
+      return min_sum, f"{min_sum} min (Mittel)", "🟡"
+    else:
+      return min_sum, f"{min_sum} min (Zu wenig)" if min_sum > 0 else "Noch keine Einträge", "🔴" if min_sum > 0 else "⚪"
+
+  # 6 Kategorien im Kachel-Stil anzeigen (2 Spalten)
+  kategorien_liste = [
+      ("🏃‍♂️ Ausdauer", "Ausdauer"),
+      ("🏋️‍♂️ Kraft", "Kraft"),
+      ("🚶‍♂️ Beweglichkeit", "Beweglichkeit"),
+      ("📋 Selbstmanagement", "Selbstmanagement"),
+      ("🍽️ Ernährung", "Ernährung"),
+      ("😊 Gesamtbefinden", "Gesamtbefinden"),
+  ]
+
+  col_c1, col_c2 = st.columns(2)
+  for i, (titel, kat_key) in enumerate(kategorien_liste):
+    minuten_val, status_text, symbol = get_cat_stats(kat_key)
+    target_col = col_c1 if i % 2 == 0 else col_c2
+    with target_col:
+      st.markdown(
+          f"""
+                <div style="padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 10px; background-color: #f9f9f9;">
+                    <h4 style="margin: 0; color: #333;">{titel}</h4>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">{symbol} {status_text}</p>
+                </div>
+                """,
+          unsafe_allow_html=True,
+      )
+
+  st.write("---")
+  st.write("### Bisherige Protokoll-Einträge")
+  if not df.empty:
+    st.dataframe(df, use_container_width=True)
+
     @st.cache_data
-    def convert_df_to_excel(df):
+    def convert_df_to_excel(dataframe):
       from io import BytesIO
 
       output = BytesIO()
       with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="Protokoll")
+        dataframe.to_excel(writer, index=False, sheet_name="Protokoll")
       return output.getvalue()
 
-    excel_data = convert_df_to_excel(st.session_state.protokoll)
+    excel_data = convert_df_to_excel(df)
     st.download_button(
         label="📥 Als Excel-Datei herunterladen",
         data=excel_data,
@@ -149,7 +169,7 @@ if menu == "Startseite & Tagebuch":
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
   else:
-    st.write("Noch keine Einträge vorhanden. Starte mit 'Eintrag erstellen'.")
+    st.info("Noch keine Einträge vorhanden.")
 
 # ----------------------------------------------------
 # 2. EINTRAG ERSTELLEN (Kategorien-Ansicht)
@@ -191,15 +211,7 @@ elif (
       st.subheader(f"Eintrag für {selected_cat} erfassen")
       datum = st.date_input("Datum")
       minuten = st.number_input(
-          "Minuten (falls zutreffend)", min_value=0, max_value=300, value=30
-      )
-      status_bewertung = st.selectbox(
-          "Bewertung / Status",
-          [
-              "Gut (Grün)",
-              "Teilweise umgesetzt (Gelb)",
-              "Verbesserungsbedarf (Rot)",
-          ],
+          "Minuten", min_value=0, max_value=300, value=30
       )
       notizen = st.text_input("Notizen / Details")
 
@@ -210,7 +222,7 @@ elif (
                 "Datum": str(datum),
                 "Kategorie": selected_cat,
                 "Minuten": minuten,
-                "Status": status_bewertung,
+                "Status": "Aktiv",
                 "Notizen": notizen,
             }]
         )
@@ -218,7 +230,6 @@ elif (
             [st.session_state.protokoll, neuer_eintrag], ignore_index=True
         )
         st.success("Eintrag erfolgreich gespeichert!")
-        st.balloons()
 
   st.write("---")
   if st.button("⬅️ Zurück zur Startseite"):
@@ -255,4 +266,3 @@ elif menu == "Übungsarsenal":
           [st.session_state.arsenal, neuer_link], ignore_index=True
       )
       st.success("Erfolgreich hinzugefügt!")
-
