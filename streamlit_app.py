@@ -239,14 +239,16 @@ if "arsenal" not in st.session_state:
   st.session_state.arsenal = pd.DataFrame(
       [
           {
-              "Kategorie": "Bereich",
+              "Kategorie": "Beweglichkeit",
+              "Typ": "Übung",
               "Bereich / Übung": "Mobilisation & Dehnen",
               "Link": "https://example.com/mobilitaet",
               "Beschreibung": "Tägliche Routine für den Rücken",
               "Bild": "",
           },
           {
-              "Kategorie": "Übung",
+              "Kategorie": "Kraft",
+              "Typ": "Übung",
               "Bereich / Übung": "Kräftigung Rumpf",
               "Link": "https://example.com/ruecken",
               "Beschreibung": "Aufrechte Haltung, Bauchspannung halten",
@@ -254,6 +256,18 @@ if "arsenal" not in st.session_state:
           },
       ]
   )
+
+# Kategorien und Typen für das Übungsarsenal (gleiche 6 Kategorien wie im
+# Tagebuch, plus Typ: was für eine Art von Eintrag das ist)
+ARSENAL_KATEGORIEN = [
+    "Ausdauer",
+    "Kraft",
+    "Beweglichkeit",
+    "Selbstmanagement",
+    "Ernährung",
+    "Gesamtbefinden",
+]
+ARSENAL_TYPEN = ["Übung", "Video", "Link", "Bild"]
 
 if "wochen_ansicht_aktiv" not in st.session_state:
   st.session_state.wochen_ansicht_aktiv = False
@@ -845,9 +859,13 @@ if True:
     else:
       st.subheader("Neuen Link / Eintrag hinzufügen")
       kategorie = st.selectbox(
-          "Kategorie", ["Bereich", "Übung"], key="arsenal_kategorie"
+          "Kategorie", ARSENAL_KATEGORIEN, key="arsenal_kategorie"
       )
-      titel = st.text_input("Bereich oder Übung", key="arsenal_titel")
+      titel = st.text_input(
+          "Titel (z. B. \"Kräftigung Rumpfmuskulatur\")",
+          key="arsenal_titel",
+      )
+      typ = st.selectbox("Typ", ARSENAL_TYPEN, key="arsenal_typ")
       link = st.text_input("Link / URL", key="arsenal_link")
       beschreibung = st.text_area(
           "Beschreibung / Notiz", key="arsenal_beschreibung"
@@ -882,6 +900,7 @@ if True:
         neuer_link = pd.DataFrame(
             [{
                 "Kategorie": kategorie,
+                "Typ": typ,
                 "Bereich / Übung": titel,
                 "Link": link,
                 "Beschreibung": beschreibung,
