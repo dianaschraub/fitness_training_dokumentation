@@ -31,18 +31,17 @@ if "arsenal" not in st.session_state:
       ]
   )
 
+if "wochen_ansicht_aktiv" not in st.session_state:
+  st.session_state.wochen_ansicht_aktiv = False
+
 # Navigation via Sidebar
 menu = st.sidebar.selectbox(
     "Navigation",
-    [
-        "Startseite & Tagebuch",
-        "Eintrag erstellen (Kategorien)",
-        "Übungsarsenal",
-    ],
+    ["Startseite & Tagebuch", "Übungsarsenal"],
 )
 
 # ----------------------------------------------------
-# 1. STARTSEITE & TAGEBUCH (3x2 Raster + Gesamtauswertung)
+# 1. STARTSEITE & TAGEBUCH
 # ----------------------------------------------------
 if menu == "Startseite & Tagebuch":
   st.title("Tagebuch")
@@ -87,107 +86,224 @@ if menu == "Startseite & Tagebuch":
   # Wochen-Kopfzeile
   col_w1, col_w2, col_w3 = st.columns([1, 4, 1])
   with col_w1:
-    st.markdown("### ⬅️")
+    if st.button("⬅️", use_container_width=True):
+      st.session_state.wochen_ansicht_aktiv = (
+          not st.session_state.wochen_ansicht_aktiv
+      )
+      st.rerun()
   with col_w2:
+    # Klickbare Wochen-Überschrift zum Umschalten der Detailansicht
+    wochen_titel_text = (
+        f"Woche {kalenderwoche} (Details ausblenden)"
+        if st.session_state.wochen_ansicht_aktiv
+        else f"Woche {kalenderwoche} (Details anzeigen)"
+    )
+    if st.button(wochen_titel_text, use_container_width=True):
+      st.session_state.wochen_ansicht_aktiv = (
+          not st.session_state.wochen_ansicht_aktiv
+      )
+      st.rerun()
     st.markdown(
-        f"<h3 style='text-align: center;'>Woche {kalenderwoche}</h3>"
-        f"<p style='text-align: center; color: gray;'>{datum_string}</p>",
+        f"<p style='text-align: center; color: gray; margin: 0;'>{datum_string}</p>",
         unsafe_allow_html=True,
     )
   with col_w3:
-    st.markdown("### ➡️")
+    if st.button("➡️", use_container_width=True):
+      st.session_state.wochen_ansicht_aktiv = (
+          not st.session_state.wochen_ansicht_aktiv
+      )
+      st.rerun()
+
+  # Hilfsfunktion für den Status
+  df = st.session_state.protokoll
+
+
+  def get_cat_symbol(kat_name):
+    if df.empty or kat_name not in df["Kategorie"].values:
+      return "⚪"
+    min_sum = df[df["Kategorie"] == kat_name]["Minuten"].sum()
+    if min_sum >= 90:
+      return "🟢"
+    elif min_sum >= 60:
+      return "🟡"
+    else:
+      return "🔴" if min_sum > 0 else "⚪"
+
+
+  # Kleine Mini-Ampel Leiste direkt unter der Woche
+  mini_col1, mini_col2, mini_col3, mini_col4, mini_col5, mini_col6 = (
+      st.columns(6)
+  )
+  with mini_col1:
+    st.markdown(
+        f"<p style='text-align: center; font-size: 12px;'>🏃‍♂️<br>{get_cat_symbol('Ausdauer')}</p>",
+        unsafe_allow_html=True,
+    )
+  with mini_col2:
+    st.markdown(
+        f"<p style='text-align: center; font-size: 12px;'>🏋️‍♂️<br>{get_cat_symbol('Kraft')}</p>",
+        unsafe_allow_html=True,
+    )
+  with mini_col3:
+    st.markdown(
+        f"<p style='text-align: center; font-size: 12px;'>🚶‍♂️<br>{get_cat_symbol('Beweglichkeit')}</p>",
+        unsafe_allow_html=True,
+    )
+  with mini_col4:
+    st.markdown(
+        f"<p style='text-align: center; font-size: 12px;'>📋<br>{get_cat_symbol('Selbstmanagement')}</p>",
+        unsafe_allow_html=True,
+    )
+  with mini_col5:
+    st.markdown(
+        f"<p style='text-align: center; font-size: 12px;'>🍽️<br>{get_cat_symbol('Ernährung')}</p>",
+        unsafe_allow_html=True,
+    )
+  with mini_col6:
+    st.markdown(
+        f"<p style='text-align: center; font-size: 12px;'>😊<br>{get_cat_symbol('Gesamtbefinden')}</p>",
+        unsafe_allow_html=True,
+    )
 
   st.write("---")
 
   # Button "Eintrag erstellen"
   if st.button("➕ Eintrag erstellen", use_container_width=True, type="primary"):
-    st.session_state.nav_override = "Eintrag erstellen (Kategorien)"
+    st.session_state.eintrag_modal_aktiv = True
     st.rerun()
 
-  st.write("### Auswertung nach Kategorien")
+  # Wenn der Nutzer auf Eintrag erstellen geklickt hat, zeigen wir das Formular direkt an
+  if st.session_state.get("eintrag_modal_aktiv", False):
+    st.write("### 📝 Neuen Eintrag erfassen")
+    with st.form(key="kategorie_form"):
+      selected_cat = st.selectbox(
+          "Kategorie wählen",
+          [
+              "Ausdauer",
+              "Kraft",
+              "Beweglichkeit",
+              "Selbstmanagement",
+              "Ernährung",
+              "Gesamtbefinden",
+          ],
+      )
+      datum = st.date_input("Datum")
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=30
+      )
+      notizen = st.text_input("Notizen / Details")
 
-  df = st.session_state.protokoll
+      col_s1, col_s2 = st.columns(2)
+      with col_s1:
+        save_btn = st.form_submit_button("Speichern", type="primary")
+      with col_s2:
+        cancel_btn = st.form_submit_button("Abbrechen")
+
+      if save_btn:
+        neuer_eintrag = pd.DataFrame(
+            [{
+                "Datum": str(datum),
+                "Kategorie": selected_cat,
+                "Minuten": minuten,
+                "Status": "Aktiv",
+                "Notizen": notizen,
+            }]
+        )
+        st.session_state.protokoll = pd.concat(
+            [st.session_state.protokoll, neuer_eintrag], ignore_index=True
+        )
+        st.session_state.eintrag_modal_aktiv = False
+        st.success("Eintrag erfolgreich gespeichert!")
+        st.rerun()
+      if cancel_btn:
+        st.session_state.eintrag_modal_aktiv = False
+        st.rerun()
+    st.write("---")
+
+  # WENN DIE WOCHEN-ANSICHT (3x2 Raster) AKTIVIERT IST
+  if st.session_state.wochen_ansicht_aktiv:
+    st.write("### 📊 Detail-Auswertung der Kategorien (3x2)")
 
 
-  def get_cat_stats(kat_name):
-    if df.empty or kat_name not in df["Kategorie"].values:
-      return 0, "Noch keine Einträge", "⚪"
-    kat_df = df[df["Kategorie"] == kat_name]
-    min_sum = kat_df["Minuten"].sum()
-    if min_sum >= 90:
-      return min_sum, f"{min_sum} min (Ausreichend)", "🟢"
-    elif min_sum >= 60:
-      return min_sum, f"{min_sum} min (Mittel)", "🟡"
+    def get_cat_stats(kat_name):
+      if df.empty or kat_name not in df["Kategorie"].values:
+        return 0, "Noch keine Einträge", "⚪"
+      kat_df = df[df["Kategorie"] == kat_name]
+      min_sum = kat_df["Minuten"].sum()
+      if min_sum >= 90:
+        return min_sum, f"{min_sum} min (Ausreichend)", "🟢"
+      elif min_sum >= 60:
+        return min_sum, f"{min_sum} min (Mittel)", "🟡"
+      else:
+        return (
+            min_sum,
+            (
+                f"{min_sum} min (Zu wenig)"
+                if min_sum > 0
+                else "Noch keine Einträge"
+            ),
+            "🔴" if min_sum > 0 else "⚪",
+        )
+
+
+    # 6 Kategorien in 3 Zeilen a 2 Spalten aufteilen
+    kategorien_paare = [
+        (("🏃‍♂️ Ausdauer", "Ausdauer"), ("🏋️‍♂️ Kraft", "Kraft")),
+        (("🚶‍♂️ Beweglichkeit", "Beweglichkeit"), ("📋 Selbstmanagement", "Selbstmanagement")),
+        (("🍽️ Ernährung", "Ernährung"), ("😊 Gesamtbefinden", "Gesamtbefinden")),
+    ]
+
+    for kat1, kat2 in kategorien_paare:
+      c1, c2 = st.columns(2)
+
+      m1, text1, sym1 = get_cat_stats(kat1[1])
+      with c1:
+        st.markdown(
+            f"""
+                    <div style="padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 10px; background-color: #f9f9f9; height: 90px;">
+                        <h4 style="margin: 0; color: #333; font-size: 16px;">{kat1[0]}</h4>
+                        <p style="margin: 8px 0 0 0; font-size: 14px; color: #555;">{sym1} {text1}</p>
+                    </div>
+                    """,
+            unsafe_allow_html=True,
+        )
+
+      m2, text2, sym2 = get_cat_stats(kat2[1])
+      with c2:
+        st.markdown(
+            f"""
+                    <div style="padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 10px; background-color: #f9f9f9; height: 90px;">
+                        <h4 style="margin: 0; color: #333; font-size: 16px;">{kat2[0]}</h4>
+                        <p style="margin: 8px 0 0 0; font-size: 14px; color: #555;">{sym2} {text2}</p>
+                    </div>
+                    """,
+            unsafe_allow_html=True,
+        )
+
+    # Gesamtauswertung Kachel am Ende
+    gesamt_minuten = df["Minuten"].sum() if not df.empty else 0
+    if gesamt_minuten >= 90:
+      g_sym, g_text = "🟢", f"{gesamt_minuten} min — Ausreichend (Ziel erreicht)"
+    elif gesamt_minuten >= 60:
+      g_sym, g_text = "🟡", f"{gesamt_minuten} min — Mittel"
     else:
-      return (
-          min_sum,
-          (
-              f"{min_sum} min (Zu wenig)"
-              if min_sum > 0
-              else "Noch keine Einträge"
-          ),
-          "🔴" if min_sum > 0 else "⚪",
+      g_sym, g_text = (
+          ("🔴", f"{gesamt_minuten} min — Zu wenig")
+          if gesamt_minuten > 0
+          else ("⚪", "Noch keine Einträge")
       )
 
-
-  # 6 Kategorien in 3 Zeilen a 2 Spalten aufteilen
-  kategorien_paare = [
-      (("🏃‍♂️ Ausdauer", "Ausdauer"), ("🏋️‍♂️ Kraft", "Kraft")),
-      (("🚶‍♂️ Beweglichkeit", "Beweglichkeit"), ("📋 Selbstmanagement", "Selbstmanagement")),
-      (("🍽️ Ernährung", "Ernährung"), ("😊 Gesamtbefinden", "Gesamtbefinden")),
-  ]
-
-  for kat1, kat2 in kategorien_paare:
-    c1, c2 = st.columns(2)
-
-    m1, text1, sym1 = get_cat_stats(kat1[1])
-    with c1:
-      st.markdown(
-          f"""
-                <div style="padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 10px; background-color: #f9f9f9; height: 90px;">
-                    <h4 style="margin: 0; color: #333; font-size: 16px;">{kat1[0]}</h4>
-                    <p style="margin: 8px 0 0 0; font-size: 14px; color: #555;">{sym1} {text1}</p>
-                </div>
-                """,
-          unsafe_allow_html=True,
-      )
-
-    m2, text2, sym2 = get_cat_stats(kat2[1])
-    with c2:
-      st.markdown(
-          f"""
-                <div style="padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 10px; background-color: #f9f9f9; height: 90px;">
-                    <h4 style="margin: 0; color: #333; font-size: 16px;">{kat2[0]}</h4>
-                    <p style="margin: 8px 0 0 0; font-size: 14px; color: #555;">{sym2} {text2}</p>
-                </div>
-                """,
-          unsafe_allow_html=True,
-      )
-
-  # Gesamtauswertung Kachel am Ende
-  gesamt_minuten = df["Minuten"].sum() if not df.empty else 0
-  if gesamt_minuten >= 90:
-    g_sym, g_text = "🟢", f"{gesamt_minuten} min — Ausreichend (Ziel erreicht)"
-  elif gesamt_minuten >= 60:
-    g_sym, g_text = "🟡", f"{gesamt_minuten} min — Mittel"
-  else:
-    g_sym, g_text = (
-        ("🔴", f"{gesamt_minuten} min — Zu wenig")
-        if gesamt_minuten > 0
-        else ("⚪", "Noch keine Einträge")
-    )
-
-  st.markdown(
-      f"""
+    st.markdown(
+        f"""
         <div style="padding: 18px; border: 2px solid #2F4F4F; border-radius: 10px; margin-top: 10px; margin-bottom: 20px; background-color: #E0EEEE;">
             <h3 style="margin: 0; color: #2F4F4F; font-size: 18px;">📊 Gesamtauswertung dieser Woche</h3>
             <p style="margin: 8px 0 0 0; font-size: 15px; font-weight: bold; color: #333;">{g_sym} {g_text}</p>
         </div>
         """,
-      unsafe_allow_html=True,
-  )
+        unsafe_allow_html=True,
+    )
+    st.write("---")
 
-  st.write("---")
   st.write("### Bisherige Protokoll-Einträge")
   if not df.empty:
     st.dataframe(df, use_container_width=True)
@@ -212,71 +328,7 @@ if menu == "Startseite & Tagebuch":
     st.info("Noch keine Einträge vorhanden.")
 
 # ----------------------------------------------------
-# 2. EINTRAG ERSTELLEN (Kategorien-Ansicht)
-# ----------------------------------------------------
-elif (
-    menu == "Eintrag erstellen (Kategorien)"
-    or st.session_state.get("nav_override")
-    == "Eintrag erstellen (Kategorien)"
-):
-  if "nav_override" in st.session_state:
-    del st.session_state.nav_override
-
-  st.title("Tagebuch")
-  st.markdown("##### Wähle eine Kategorie für deinen Eintrag")
-  st.write("---")
-
-  col1, col2 = st.columns(2)
-
-  selected_cat = None
-  with col1:
-    if st.button("🏃‍♂️ Ausdauer", use_container_width=True):
-      selected_cat = "Ausdauer"
-    if st.button("🚶‍♂️ Beweglichkeit", use_container_width=True):
-      selected_cat = "Beweglichkeit"
-    if st.button("🍽️ Ernährung", use_container_width=True):
-      selected_cat = "Ernährung"
-
-  with col2:
-    if st.button("🏋️‍♂️ Kraft", use_container_width=True):
-      selected_cat = "Kraft"
-    if st.button("📋 Selbstmanagement", use_container_width=True):
-      selected_cat = "Selbstmanagement"
-    if st.button("😊 Gesamtbefinden", use_container_width=True):
-      selected_cat = "Gesamtbefinden"
-
-  if selected_cat:
-    st.success(f"Kategorie ausgewählt: **{selected_cat}**")
-    with st.form(key="kategorie_form"):
-      st.subheader(f"Füge einen Eintrag für {selected_cat} hinzu")
-      datum = st.date_input("Datum")
-      minuten = st.number_input(
-          "Minuten", min_value=0, max_value=300, value=30
-      )
-      notizen = st.text_input("Notizen / Details")
-
-      save_btn = st.form_submit_button("Speichern")
-      if save_btn:
-        neuer_eintrag = pd.DataFrame(
-            [{
-                "Datum": str(datum),
-                "Kategorie": selected_cat,
-                "Minuten": minuten,
-                "Status": "Aktiv",
-                "Notizen": notizen,
-            }]
-        )
-        st.session_state.protokoll = pd.concat(
-            [st.session_state.protokoll, neuer_eintrag], ignore_index=True
-        )
-        st.success("Eintrag erfolgreich gespeichert!")
-
-  st.write("---")
-  if st.button("⬅️ Zurück zur Startseite"):
-    st.rerun()
-
-# ----------------------------------------------------
-# 3. ÜBUNGSARSENAL
+# 2. ÜBUNGSARSENAL
 # ----------------------------------------------------
 elif menu == "Übungsarsenal":
   st.title("🏋️‍♀️ Übungsarsenal")
