@@ -1,3 +1,5 @@
+import base64
+import math
 import datetime
 import pandas as pd
 import streamlit as st
@@ -7,11 +9,230 @@ st.set_page_config(
     page_title="Sport-Tagebuch", page_icon="🏃‍♀️", layout="centered"
 )
 
+# --- Eigenes Icon für "Beweglichkeit" (Original-Bild des Nutzers) ---
+BEWEGLICHKEIT_ICON_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAFAAAABOCAAAAACSps6aAAAHNklEQVRYw6WYf4xUVxXHv99z3/zYnVnIUooJBLWV"
+    "GIpQKOVXg4gN/qLRWjHgH1bRSmtVSmVpAKXVglIIpSQtNgSsP0o0QqKm2gZrUCiy29YlaYmJrQUrrW2T0loXurM/"
+    "37vn+Mfsws6bNzOPdTbZZO677zPfc8+595x7aDDQzND4o5m3n7lsAZXVj0gaaDQEAOijNEAt/OmLb+HG/XmfRHQB"
+    "rfxnjEKADXnm3p13RiS6Z0spSHgKydJooRh9SDbmwWf3ngnU0A5JMIfUEEDoBYiAxgab5l/fDQ9gEjRxBr2negpV"
+    "2dhgowa7zzqDxyok2mOAwgOSQh0AaPPpPfBw+MLiHkkUCBgMkFQ4o8qubgf4zPo6s4C0QPriyZ/Bw2Hl7JKrOzUV"
+    "0MywY8ABvrhOxfh/A6nFjl/Bw+G2qb0N3kgDNAO2Q0A//s6ogcBUQGrhj09QIbjjvf0CmPfeakVHkAJoottAo5/8"
+    "jVCAKNNkHAgdErWmAWrh98dEQWu7vBSoFM+fPDduaktfsntSAM1wAgT1qlsGnAbRD/e9BlyxerX5JGIKIIGJAMRf"
+    "OaaHQe+yowTtlXVPHXBJmzqVUzAXHorn/pPR7J1Hs4CBmcc35JKAND/Y6Ggw6b/mDA1oX4inF8owJnvi6oqgNMkN"
+    "eqYK7GjsLAgcOoEnLpxMbvBJaHXspNt6uA4A8AxwasTwS0lz0209zIeH4vnzGHkyBKMFUsKp7wENL5/G9BHjVyel"
+    "onTH1+CEGSCcPY/P5IZyHv3YG3zC2+lMNlwHAujEzLVwjqBz2HhF32iBRsyHQvGXLm6+JVKDabR2Q6+zUQJJP32M"
+    "0Xhq3q+DRw4sas1dtuTxXf2JySpNYMNgTYuPlyP6U9tnhm/2jp3APrJyK19CYAPu/FkYAJEnF9z17uQPtPb1xHmX"
+    "YLLR53afcgZA1Q0+MPsXDMwl89LtZcufmXPuolq16++/tsfFgalNNqpsPXdxi3jK0bkPFSImJoE0Cn3h+OLKl53a"
+    "oaWlYHROMaPea5XzPHH7G3nlaOLQ6JsPHJHYWaru398KEqvUFAoz57dU50zvfrczcRkbAY1R7uGXYnuMBDy+29GS"
+    "QGzkFLPcq3O6Yu8RMIhe1V4cWUikcopR3X1dlQIdvr3cHNS92JbVS1boCx2LYvLs8hcGr32TBud/vKo7c0FiGoVm"
+    "tM2xkBGsHz9xT7kEbvtbi48tR12g0TcfPFwZMvTTvt7bddO9EJh039obi+4GXrZMdzxkiI0tmdbSh/IKaNB5X86n"
+    "V2j0uYdfrPSI6Ce+1Pf0munL+wHA47d9sdxXzylmudfmvBMPtT3nf/4PoDwaRDNO2LDNZafUKZaM3m17x/nK0aCt"
+    "DxQ1gGKKm3Oxi1pthUZfeHZhQj3kTIf/T1qzNkJl2NRXuEmlmugBofcYv3TFR8b0xXN9UBsXtvzoiPMAyAqq0CsK"
+    "S1Z8fIKFpapMUNtkzb88v7yJacKKlcwuWP7p9yMcgKMhtpdrKTSYrO9yHqDNLHSMUJmftXTZNPE9Jg4JxU0Nhcao"
+    "uH9leQEzHXN/8+BxlL/Qxh2eHYYq1Vm07l6m5t/4DgyAw4a5pc8fPbJIXfmX/rvkUMY7SWwCSC2Fxqj4lUedB0Rn"
+    "tTtVaQ5X73NaXtFgz6oeVt8AzGVtwBIVGqPiY4+KB2DYWYgkYCnau9VDABj11rsL4pMyFDPJCs2C0vx/0gDn73io"
+    "FBiNaoVffm1AFADF3/yIDMYzvbms0ScBjVFxze6yh6c82xKRgNGilmMr3irvxCD66MFxgzHrzGUtcQ2NUfHIkvIi"
+    "62OfHcrnRoQtp5b9PYjKxHmHc1qtEIlraEHPOggApyuHeaBZpjTl2MeiAACiTOf+nE94V6qBxii//aRTgH7i1kiG"
+    "w4O0oLfl0FcjAoDiuYTuDHFaqnm+pXMHPABi26T+EV0fWhBGP908NJCkD+FTCQolXDdYNvimL1cWbTRn3d+7HbXb"
+    "GMzEgcao6cH2ssGt92usiUUTYDxwCUD64gtb4AEINk/pibe5aEQ4vF5J7vxcPJYMvKvbARC/5JtVORLgBVLioWdN"
+    "lUCjL+z7g/MAtGmnS66i6/W2aLEMo02v3A0F4PymWSPKjHRAY29lW8fM3Ma3nQHi563rC+q2aBKPlf5DFVdy+sLB"
+    "g+IBqHsgrzVwtRVSx1V4mZo/u2HoVG37cMnV7yElP1xYodCCe14tGzxt00BNXh2n0CbLiF/Swl9/gqFTdWzY6LLB"
+    "pBFCQBnuYxk61AFwdlvVJaRaIatGBQDEGFx82AQC4t/3g1Bq92VbIQDRGrdWBAAF5oYvHKKfbI2CANgxYaBmmSe4"
+    "IRcGQcQbK5u7xgyNgBCWydDMzNh75d7myOv3V5Sc1fqwdM3uIIq4a2GPjBx3ObFyqoCBNlTNa/b1w32LZgzWL5Qz"
+    "//qzXv/BCq+RUi5KjAbY8CIalTRYjbv10OJTSVh8kqGs73+z/aglbdXMJwAAAABJRU5ErkJggg=="
+)
+
+
+def beweglichkeit_icon_html(size_px):
+  """Gibt das eigene Beweglichkeit-Icon (Originalbild) als img-Tag zurück."""
+  return (
+      f"<img src='data:image/png;base64,{BEWEGLICHKEIT_ICON_B64}' "
+      f"style='height:{size_px}px; width:{size_px}px; object-fit:contain; "
+      f"vertical-align:middle;' />"
+  )
+
+
+def get_status_color(minutes, goal):
+  """Liefert die Statusfarbe passend zur bisherigen Ampel-Logik
+  (grau = nichts, rot = wenig, gelb = mittel, grün = Ziel erreicht),
+  aber verhältnisbasiert, damit sie zum Ring-Füllstand passt."""
+  if minutes <= 0:
+    return "#c9c9c9"
+  ratio = minutes / goal if goal else 0
+  if ratio >= 1:
+    return "#2e7d46"
+  elif ratio >= 0.66:
+    return "#e3a008"
+  else:
+    return "#d9534f"
+
+
+def render_progress_ring_svg(minutes, goal, size=40, stroke_width=5):
+  """Baut ein Ring-Fortschrittsdiagramm (Donut) als SVG: Füllstand
+  proportional zu minutes/goal, Minutenzahl in der Mitte."""
+  ratio = 0 if not goal else min(minutes / goal, 1.0)
+  color = get_status_color(minutes, goal)
+  radius = (size - stroke_width) / 2
+  circumference = 2 * math.pi * radius
+  offset = circumference * (1 - ratio)
+  center = size / 2
+  font_size = max(9, round(size * 0.32))
+  return (
+      f"<svg width='{size}' height='{size}' viewBox='0 0 {size} {size}'"
+      f" style='display:block;'>"
+      f"<circle cx='{center}' cy='{center}' r='{radius}' fill='none'"
+      f" stroke='#e9e9e9' stroke-width='{stroke_width}' />"
+      f"<circle cx='{center}' cy='{center}' r='{radius}' fill='none'"
+      f" stroke='{color}' stroke-width='{stroke_width}'"
+      f" stroke-linecap='round'"
+      f" stroke-dasharray='{circumference:.2f}'"
+      f" stroke-dashoffset='{offset:.2f}'"
+      f" transform='rotate(-90 {center} {center})' />"
+      f"<text x='{center}' y='{center + font_size * 0.36:.1f}'"
+      f" text-anchor='middle' font-size='{font_size}' font-weight='700'"
+      f" fill='#333'>{int(minutes)}</text>"
+      f"</svg>"
+  )
+
+
+def render_icon_box(
+    icon_html, minutes, goal, box_height=88, icon_font_size=20, ring_size=42
+):
+  """Rendert eines der 6 Status-Kästchen (Woche/Heute) mit Icon oben und
+  einem Fortschrittsring (samt Minutenzahl) darunter. Feste Höhe/Breite,
+  damit alle 6 Boxen garantiert gleich groß sind."""
+  ring_svg = render_progress_ring_svg(minutes, goal, size=ring_size)
+  st.markdown(
+      f"<div style='text-align: center; background: white; padding: 6px;"
+      f" border-radius: 8px; border: 1px solid #d0edd2; width: 100%;"
+      f" height: {box_height}px; box-sizing: border-box; display: flex;"
+      f" flex-direction: column; align-items: center; justify-content:"
+      f" center; gap: 4px;'>"
+      f"<span style='font-size: {icon_font_size}px; line-height: 1;'>"
+      f"{icon_html}</span>"
+      f"{ring_svg}"
+      f"</div>",
+      unsafe_allow_html=True,
+  )
+
+
+@st.dialog("Sonstiges – bitte kurz beschreiben")
+def sonstiges_dialog(state_key):
+  """Öffnet ein modales Fenster, in dem man frei Text eintragen kann,
+  wenn bei einer Kategorie die Unterkategorie 'Sonstiges' gewählt wurde."""
+  text_val = st.text_area(
+      "Was genau hast du gemacht?",
+      value=st.session_state.get(state_key, ""),
+      key=f"{state_key}_input",
+  )
+  col_d1, col_d2 = st.columns(2)
+  with col_d1:
+    if st.button(
+        "Übernehmen", key=f"{state_key}_ok", type="primary",
+        use_container_width=True,
+    ):
+      st.session_state[state_key] = text_val.strip()
+      st.session_state[f"{state_key}_done"] = True
+      st.rerun()
+  with col_d2:
+    if st.button(
+        "Abbrechen", key=f"{state_key}_cancel", use_container_width=True
+    ):
+      st.session_state[f"{state_key}_done"] = True
+      st.rerun()
+
+
+def handle_sonstiges_unterkategorie(selected_unterkat, cat_key):
+  """Wenn 'Sonstiges' gewählt ist, öffnet dies (einmalig, bis wieder
+  gewechselt wird) das Dialog-Fenster zur Texteingabe und liefert den
+  eingegebenen Freitext als tatsächliche Unterkategorie zurück."""
+  state_key = f"sonstiges_text_{cat_key}"
+  done_key = f"{state_key}_done"
+
+  if selected_unterkat != "Sonstiges":
+    st.session_state[done_key] = False
+    return selected_unterkat
+
+  if not st.session_state.get(done_key, False):
+    sonstiges_dialog(state_key)
+
+  freitext = st.session_state.get(state_key, "").strip()
+  if freitext:
+    st.caption(f"📝 Sonstiges: {freitext}")
+  else:
+    st.caption("📝 Sonstiges (noch keine Beschreibung eingetragen)")
+  return freitext if freitext else "Sonstiges"
+
+
 # Initialisierung des Session State für Daten
 if "protokoll" not in st.session_state:
   st.session_state.protokoll = pd.DataFrame(
-      columns=["Datum", "Kategorie", "Minuten", "Status", "Notizen"]
+      columns=[
+          "Datum",
+          "Kategorie",
+          "Unterkategorie",
+          "Minuten",
+          "Status",
+          "Notizen",
+      ]
   )
+
+# Unterkategorien, die nur bei "Selbstmanagement" zur Auswahl stehen
+SELBSTMANAGEMENT_UNTERKATEGORIEN = [
+    "Meditation",
+    "Entspannung",
+    "Koordination",
+    "Gleichgewichtstraining",
+]
+
+# Unterkategorien, die nur bei "Ausdauer" zur Auswahl stehen
+AUSDAUER_UNTERKATEGORIEN = [
+    "Joggen",
+    "Nordic Walking",
+    "Walking",
+    "Wandern",
+    "Radfahren",
+    "Schwimmen",
+    "Treppensteigen",
+    "Sonstiges",
+]
+
+# Unterkategorien, die nur bei "Beweglichkeit" zur Auswahl stehen
+BEWEGLICHKEIT_UNTERKATEGORIEN = [
+    "Yoga",
+    "Ausgleichsübungen",
+    "Faszientraining",
+    "Rückenfit",
+    "Massage",
+    "Sonstiges",
+]
+
+# Unterkategorien, die nur bei "Kraft" zur Auswahl stehen
+KRAFT_UNTERKATEGORIEN = [
+    "Pilates",
+    "Rückenfit",
+    "Stabilisierungstraining",
+    "Therabandtraining",
+    "Hanteltraining",
+    "Sonstiges",
+]
+
+# Tageszeiten, die nur bei "Ernährung" zur Auswahl stehen
+ERNAEHRUNG_TAGESZEITEN = ["Morgens", "Mittags", "Abends"]
+
+# Ampel-Status für Ernährung: (Anzeige-Label, gespeicherter Wert, Farbe)
+ERNAEHRUNG_AMPEL = [
+    ("🟢 Umgesetzt", "Umgesetzt", "#2e7d46"),
+    ("🟡 Teilweise umgesetzt", "Teilweise umgesetzt", "#e3a008"),
+    ("🔴 Nicht umgesetzt", "Nicht umgesetzt", "#d9534f"),
+]
+
+# Smileys für "Gesamtbefinden"
+STIMMUNG_SMILEYS = [
+    ("😞 Schlecht", "😞 Schlecht"),
+    ("😐 Neutral", "😐 Neutral"),
+    ("😊 Gut", "😊 Gut"),
+]
 
 if "arsenal" not in st.session_state:
   st.session_state.arsenal = pd.DataFrame(
@@ -96,277 +317,375 @@ if menu == "Startseite & Tagebuch":
 
   df = st.session_state.protokoll
 
-
-  def get_cat_symbol(kat_name):
+  def get_cat_minutes(kat_name):
     if df.empty or kat_name not in df["Kategorie"].values:
-      return "⚪"
-    min_sum = df[df["Kategorie"] == kat_name]["Minuten"].sum()
-    if min_sum >= 90:
-      return "🟢"
-    elif min_sum >= 60:
-      return "🟡"
-    else:
-      return "🔴" if min_sum > 0 else "⚪"
+      return 0
+    return int(df[df["Kategorie"] == kat_name]["Minuten"].sum())
 
-
-  def get_today_symbol(kat_name):
+  def get_today_minutes(kat_name):
     if df.empty:
-      return "⚪"
+      return 0
     heute_str = str(heute)
     heute_df = df[(df["Datum"] == heute_str) & (df["Kategorie"] == kat_name)]
     if heute_df.empty:
-      return "⚪"
-    min_sum = heute_df["Minuten"].sum()
-    if min_sum >= 30:
-      return "🟢"
-    elif min_sum > 0:
-      return "🟡"
-    else:
-      return "🔴"
+      return 0
+    return int(heute_df["Minuten"].sum())
 
-
-  # --- CSS FÜR GRÜNEN KASTEN UND BLAUEN BUTTON ---
+  # --- CSS für den grünen Hauptkasten ---
+  # Wichtig: st.container(key="dashcard") erzeugt eine echte Wrapper-Div
+  # mit der CSS-Klasse "st-key-dashcard". Damit landet WIRKLICH jedes
+  # Element (auch der Button "Eintrag erstellen"), das innerhalb von
+  # "with st.container(key='dashcard'):" steht, in diesem Kasten -
+  # der alte :has()-Marker-Trick hat das nicht zuverlässig geschafft.
+  # Voraussetzung: Streamlit-Version, die den key-Parameter für
+  # st.container() unterstützt (ab ca. 1.32).
   st.markdown(
       """
         <style>
-        .green-wrapper {
+        div.st-key-dashcard {
             background-color: #e2efe3;
             border: 1px solid #c8dbc9;
             border-radius: 14px;
             padding: 20px;
             margin-bottom: 25px;
         }
-        div.stButton > button:first-child {
-            background-color: #0077b6 !important;
+
+        /* Primärer Aktions-Button (z.B. "Eintrag erstellen", "Speichern") -
+           gefülltes, gedecktes Waldgrün, harmoniert mit der grünen Karte */
+        div.stButton button[kind="primary"] {
+            background-color: #3f7a5c !important;
             color: white !important;
             border-radius: 8px !important;
-            font-weight: bold !important;
+            font-weight: 600 !important;
             border: none !important;
         }
-        div.stButton > button:first-child:hover {
-            background-color: #023e8a !important;
+        div.stButton button[kind="primary"]:hover {
+            background-color: #2f5e45 !important;
+        }
+
+        /* Sekundäre Buttons (Navigation ⬅️➡️, Wochen-Titel, Abbrechen) -
+           dezent, outline, fügt sich ruhig in die grüne Karte ein */
+        div.stButton button[kind="secondary"] {
+            background-color: #ffffff !important;
+            color: #2f5e45 !important;
+            border: 1px solid #a9c9b3 !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+        }
+        div.stButton button[kind="secondary"]:hover {
+            background-color: #eef6f0 !important;
+            border-color: #3f7a5c !important;
+            color: #2f5e45 !important;
+        }
+
+        /* Spalten (st.columns) sollen auf dem Handy NICHT untereinander
+           stehen, sondern genauso nebeneinander bleiben wie am Desktop.
+           Streamlit stapelt Spalten normalerweise unter ~640px Breite -
+           das erzwingen wir hier zurück auf eine Reihe. */
+        div[data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            flex-direction: row !important;
+            gap: 6px !important;
+        }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            min-width: 0 !important;
+            width: auto !important;
+        }
+
+        /* Auf sehr schmalen Screens Schrift/Abstände in den 6er-Reihen
+           etwas verkleinern, damit alles bequem nebeneinander passt. */
+        @media (max-width: 480px) {
+            div.st-key-dashcard {
+                padding: 10px;
+            }
+        }
+
+        /* Plus/Minus-Stepper-Buttons beim Minuten-Eingabefeld ausblenden */
+        button[data-testid="stNumberInputStepDown"],
+        button[data-testid="stNumberInputStepUp"] {
+            display: none !important;
         }
         </style>
-        <div class="green-wrapper">
         """,
       unsafe_allow_html=True,
   )
 
-  # Wochen-Kopfzeile
-  col_w1, col_w2, col_w3 = st.columns([1, 4, 1])
-  with col_w1:
-    if st.button("⬅️", key="w_back", use_container_width=True):
-      st.session_state.wochen_ansicht_aktiv = (
-          not st.session_state.wochen_ansicht_aktiv
+  # Echter Container - alles, was hier drin (eingerückt) steht,
+  # bekommt den grünen Hintergrund, inklusive des Buttons ganz unten.
+  with st.container(key="dashcard"):
+    col_w1, col_w2, col_w3 = st.columns([1, 4, 1])
+    with col_w1:
+      if st.button("⬅️", key="w_back", use_container_width=True):
+        st.session_state.wochen_ansicht_aktiv = (
+            not st.session_state.wochen_ansicht_aktiv
+        )
+        st.rerun()
+    with col_w2:
+      wochen_titel_text = (
+          f"Woche {kalenderwoche} (Details ausblenden)"
+          if st.session_state.wochen_ansicht_aktiv
+          else f"Woche {kalenderwoche} (Details anzeigen)"
       )
-      st.rerun()
-  with col_w2:
-    wochen_titel_text = (
-        f"Woche {kalenderwoche} (Details ausblenden)"
-        if st.session_state.wochen_ansicht_aktiv
-        else f"Woche {kalenderwoche} (Details anzeigen)"
-    )
-    if st.button(wochen_titel_text, key="w_title", use_container_width=True):
-      st.session_state.wochen_ansicht_aktiv = (
-          not st.session_state.wochen_ansicht_aktiv
+      if st.button(wochen_titel_text, key="w_title", use_container_width=True):
+        st.session_state.wochen_ansicht_aktiv = (
+            not st.session_state.wochen_ansicht_aktiv
+        )
+        st.rerun()
+      st.markdown(
+          f"<p style='text-align: center; color: #555; margin: 0;'>{datum_string}</p>",
+          unsafe_allow_html=True,
       )
-      st.rerun()
+    with col_w3:
+      if st.button("➡️", key="w_fwd", use_container_width=True):
+        st.session_state.wochen_ansicht_aktiv = (
+            not st.session_state.wochen_ansicht_aktiv
+        )
+        st.rerun()
+
+    # BEREICH: WOCHE
     st.markdown(
-        f"<p style='text-align: center; color: #555; margin: 0;'>{datum_string}</p>",
+        "<p style='font-weight: bold; margin-top: 15px;'>Woche</p>",
         unsafe_allow_html=True,
     )
-  with col_w3:
-    if st.button("➡️", key="w_fwd", use_container_width=True):
-      st.session_state.wochen_ansicht_aktiv = (
-          not st.session_state.wochen_ansicht_aktiv
+    mini_col1, mini_col2, mini_col3, mini_col4, mini_col5, mini_col6 = (
+        st.columns(6)
+    )
+    with mini_col1:
+      render_icon_box(
+          "🏃‍♂️", get_cat_minutes("Ausdauer"), 90,
+          box_height=90, icon_font_size=20, ring_size=44,
       )
+    with mini_col2:
+      render_icon_box(
+          "🏋️‍♂️", get_cat_minutes("Kraft"), 90,
+          box_height=90, icon_font_size=20, ring_size=44,
+      )
+    with mini_col3:
+      render_icon_box(
+          beweglichkeit_icon_html(30),
+          get_cat_minutes("Beweglichkeit"), 90,
+          box_height=90, icon_font_size=20, ring_size=44,
+      )
+    with mini_col4:
+      render_icon_box(
+          "📋", get_cat_minutes("Selbstmanagement"), 90,
+          box_height=90, icon_font_size=20, ring_size=44,
+      )
+    with mini_col5:
+      render_icon_box(
+          "🍽️", get_cat_minutes("Ernährung"), 90,
+          box_height=90, icon_font_size=20, ring_size=44,
+      )
+    with mini_col6:
+      render_icon_box(
+          "😊", get_cat_minutes("Gesamtbefinden"), 90,
+          box_height=90, icon_font_size=20, ring_size=44,
+      )
+
+    st.write("")
+
+    # BEREICH: HEUTE
+    st.markdown(
+        f"<p style='font-weight: bold;'>Heute <span style='font-size: 13px;"
+        f" color: #555; float: right;'>{heute_string}</span></p>",
+        unsafe_allow_html=True,
+    )
+    t_col1, t_col2, t_col3, t_col4, t_col5, t_col6 = st.columns(6)
+    with t_col1:
+      render_icon_box(
+          "🏃‍♂️", get_today_minutes("Ausdauer"), 90,
+          box_height=80, icon_font_size=18, ring_size=38,
+      )
+    with t_col2:
+      render_icon_box(
+          "🏋️‍♂️", get_today_minutes("Kraft"), 90,
+          box_height=80, icon_font_size=18, ring_size=38,
+      )
+    with t_col3:
+      render_icon_box(
+          beweglichkeit_icon_html(26),
+          get_today_minutes("Beweglichkeit"), 90,
+          box_height=80, icon_font_size=18, ring_size=38,
+      )
+    with t_col4:
+      render_icon_box(
+          "📋", get_today_minutes("Selbstmanagement"), 90,
+          box_height=80, icon_font_size=18, ring_size=38,
+      )
+    with t_col5:
+      render_icon_box(
+          "🍽️", get_today_minutes("Ernährung"), 90,
+          box_height=80, icon_font_size=18, ring_size=38,
+      )
+    with t_col6:
+      render_icon_box(
+          "😊", get_today_minutes("Gesamtbefinden"), 90,
+          box_height=80, icon_font_size=18, ring_size=38,
+      )
+
+    st.write("")
+
+    # Grüner Button "Eintrag erstellen" - jetzt garantiert INNERHALB
+    # des grünen Kastens, da er im selben st.container(key="dashcard") steht.
+    # Statt dem bunten ➕-Emoji (auf dunklem Grund schlecht erkennbar) wird
+    # ein normales "+"-Zeichen verwendet, das die weiße Button-Schriftfarbe
+    # übernimmt und damit gut sichtbar ist.
+    if st.button(
+        "＋ Eintrag erstellen",
+        key="btn_create",
+        use_container_width=True,
+        type="primary",
+    ):
+      st.session_state.eintrag_modal_aktiv = True
       st.rerun()
 
-  # BEREICH: WOCHE
-  st.markdown(
-      "<p style='font-weight: bold; margin-top: 15px;'>Woche</p>",
-      unsafe_allow_html=True,
-  )
-  mini_col1, mini_col2, mini_col3, mini_col4, mini_col5, mini_col6 = (
-      st.columns(6)
-  )
-  with mini_col1:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 20px; background: white;"
-        f" padding: 6px; border-radius: 8px; border: 1px solid"
-        f" #d0edd2;'>🏃‍♂️<br><span"
-        f" style='font-size: 16px;'>{get_cat_symbol('Ausdauer')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with mini_col2:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 20px; background: white;"
-        f" padding: 6px; border-radius: 8px; border: 1px solid"
-        f" #d0edd2;'>🏋️‍♂️<br><span"
-        f" style='font-size: 16px;'>{get_cat_symbol('Kraft')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with mini_col3:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 20px; background: white;"
-        f" padding: 6px; border-radius: 8px; border: 1px solid"
-        f" #d0edd2;'>🚶‍♂️<br><span"
-        f" style='font-size:"
-        f" 16px;'>{get_cat_symbol('Beweglichkeit')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with mini_col4:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 20px; background: white;"
-        f" padding: 6px; border-radius: 8px; border: 1px solid"
-        f" #d0edd2;'>📋<br><span"
-        f" style='font-size:"
-        f" 16px;'>{get_cat_symbol('Selbstmanagement')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with mini_col5:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 20px; background: white;"
-        f" padding: 6px; border-radius: 8px; border: 1px solid"
-        f" #d0edd2;'>🍽️<br><span"
-        f" style='font-size: 16px;'>{get_cat_symbol('Ernährung')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with mini_col6:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 20px; background: white;"
-        f" padding: 6px; border-radius: 8px; border: 1px solid"
-        f" #d0edd2;'>😊<br><span"
-        f" style='font-size:"
-        f" 16px;'>{get_cat_symbol('Gesamtbefinden')}</span></div>",
-        unsafe_allow_html=True,
-    )
-
-  st.write("")
-
-  # BEREICH: HEUTE
-  st.markdown(
-      f"<p style='font-weight: bold;'>Heute <span style='font-size: 13px;"
-      f" color: #555; float: right;'>{heute_string}</span></p>",
-      unsafe_allow_html=True,
-  )
-  t_col1, t_col2, t_col3, t_col4, t_col5, t_col6 = st.columns(6)
-  with t_col1:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 18px; background: white;"
-        f" padding: 6px; border-radius: 8px; border: 1px solid"
-        f" #d0edd2;'>🏃‍♂️<br><span"
-        f" style='font-size: 15px;'>{get_today_symbol('Ausdauer')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with t_col2:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 18px; background: white;"
-        f" padding: 6px; border-radius: 8px; border: 1px solid"
-        f" #d0edd2;'>🏋️‍♂️<br><span"
-        f" style='font-size: 15px;'>{get_today_symbol('Kraft')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with t_col3:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 18px; background: white;"
-        f" padding: 6px; border-radius: 8px; border: 1px solid"
-        f" #d0edd2;'>🚶‍♂️<br><span"
-        f" style='font-size:"
-        f" 15px;'>{get_today_symbol('Beweglichkeit')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with t_col4:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 18px; background: white;"
-        f" padding: 6px; border-radius: 8px; border: 1px solid"
-        f" #d0edd2;'>📋<br><span"
-        f" style='font-size:"
-        f" 15px;'>{get_today_symbol('Selbstmanagement')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with t_col5:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 18px; background: white;"
-        f" padding: 6px; border-radius: 8px; border: 1px solid"
-        f" #d0edd2;'>🍽️<br><span"
-        f" style='font-size: 15px;'>{get_today_symbol('Ernährung')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with t_col6:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 18px; background: white;"
-        f" padding: 6px; border-radius: 8px; border: 1px solid"
-        f" #d0edd2;'>😊<br><span"
-        f" style='font-size:"
-        f" 15px;'>{get_today_symbol('Gesamtbefinden')}</span></div>",
-        unsafe_allow_html=True,
-    )
-
-  st.write("")
-
-  # Blauer Button "Eintrag erstellen"
-  if st.button(
-      "➕ Eintrag erstellen", key="btn_create", use_container_width=True
-  ):
-    st.session_state.eintrag_modal_aktiv = True
-    st.rerun()
-
-  # Container schließen
-  st.markdown("</div>", unsafe_allow_html=True)
-
-  # Formular für Eintrag (außerhalb)
+  # Formular für Eintrag (außerhalb des Kastens)
   if st.session_state.get("eintrag_modal_aktiv", False):
     st.write("### 📝 Neuen Eintrag erfassen")
-    with st.form(key="kategorie_form"):
-      selected_cat = st.selectbox(
-          "Kategorie wählen",
-          [
-              "Ausdauer",
-              "Kraft",
-              "Beweglichkeit",
-              "Selbstmanagement",
-              "Ernährung",
-              "Gesamtbefinden",
-          ],
+    # Kein st.form() hier: Felder innerhalb eines Formulars lösen erst
+    # beim Absenden einen Rerun aus, daher würden die Zusatzfelder nicht
+    # sofort erscheinen. Stattdessen normale Widgets + eigene Buttons.
+    selected_cat = st.selectbox(
+        "Kategorie wählen",
+        [
+            "Ausdauer",
+            "Kraft",
+            "Beweglichkeit",
+            "Selbstmanagement",
+            "Ernährung",
+            "Gesamtbefinden",
+        ],
+        key="entry_kategorie",
+    )
+
+    selected_unterkat = ""
+    status_wert = "Aktiv"
+    minuten = 0
+
+    if selected_cat == "Ausdauer":
+      selected_unterkat = st.selectbox(
+          "Unterkategorie",
+          AUSDAUER_UNTERKATEGORIEN,
+          key="entry_unterkategorie_ausdauer",
       )
-      datum = st.date_input("Datum", value=heute)
+      selected_unterkat = handle_sonstiges_unterkategorie(
+          selected_unterkat, "ausdauer"
+      )
       minuten = st.number_input(
-          "Minuten", min_value=0, max_value=300, value=30
+          "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
       )
-      notizen = st.text_input("Notizen / Details")
 
-      col_s1, col_s2 = st.columns(2)
-      with col_s1:
-        save_btn = st.form_submit_button("Speichern")
-      with col_s2:
-        cancel_btn = st.form_submit_button("Abbrechen")
+    elif selected_cat == "Selbstmanagement":
+      selected_unterkat = st.selectbox(
+          "Unterkategorie",
+          SELBSTMANAGEMENT_UNTERKATEGORIEN,
+          key="entry_unterkategorie",
+      )
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
+      )
 
-      if save_btn:
-        neuer_eintrag = pd.DataFrame(
-            [{
-                "Datum": str(datum),
-                "Kategorie": selected_cat,
-                "Minuten": minuten,
-                "Status": "Aktiv",
-                "Notizen": notizen,
-            }]
-        )
-        st.session_state.protokoll = pd.concat(
-            [st.session_state.protokoll, neuer_eintrag], ignore_index=True
-        )
-        st.session_state.eintrag_modal_aktiv = False
-        st.success("Eintrag erfolgreich gespeichert!")
-        st.rerun()
-      if cancel_btn:
-        st.session_state.eintrag_modal_aktiv = False
-        st.rerun()
+    elif selected_cat == "Beweglichkeit":
+      selected_unterkat = st.selectbox(
+          "Unterkategorie",
+          BEWEGLICHKEIT_UNTERKATEGORIEN,
+          key="entry_unterkategorie_beweglichkeit",
+      )
+      selected_unterkat = handle_sonstiges_unterkategorie(
+          selected_unterkat, "beweglichkeit"
+      )
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
+      )
+
+    elif selected_cat == "Kraft":
+      selected_unterkat = st.selectbox(
+          "Unterkategorie",
+          KRAFT_UNTERKATEGORIEN,
+          key="entry_unterkategorie_kraft",
+      )
+      selected_unterkat = handle_sonstiges_unterkategorie(
+          selected_unterkat, "kraft"
+      )
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
+      )
+
+    elif selected_cat == "Ernährung":
+      selected_unterkat = st.radio(
+          "Tageszeit",
+          ERNAEHRUNG_TAGESZEITEN,
+          horizontal=True,
+          key="entry_tageszeit",
+      )
+      ampel_label = st.radio(
+          "Status",
+          [label for label, _, _ in ERNAEHRUNG_AMPEL],
+          horizontal=True,
+          key="entry_ampel",
+      )
+      status_wert = next(
+          wert for label, wert, _ in ERNAEHRUNG_AMPEL if label == ampel_label
+      )
+
+    elif selected_cat == "Gesamtbefinden":
+      smiley_label = st.radio(
+          "Stimmung wählen",
+          [label for label, _ in STIMMUNG_SMILEYS],
+          horizontal=True,
+          key="entry_smiley",
+      )
+      selected_unterkat = next(
+          wert for label, wert in STIMMUNG_SMILEYS if label == smiley_label
+      )
+
+    else:
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
+      )
+
+    datum = st.date_input("Datum", value=heute, key="entry_datum")
+    notizen = st.text_input("Notizen / Details", key="entry_notizen")
+
+    col_s1, col_s2 = st.columns(2)
+    with col_s1:
+      save_btn = st.button(
+          "Speichern",
+          key="save_entry_btn",
+          type="primary",
+          use_container_width=True,
+      )
+    with col_s2:
+      cancel_btn = st.button(
+          "Abbrechen", key="cancel_entry_btn", use_container_width=True
+      )
+
+    if save_btn:
+      neuer_eintrag = pd.DataFrame(
+          [{
+              "Datum": str(datum),
+              "Kategorie": selected_cat,
+              "Unterkategorie": selected_unterkat,
+              "Minuten": minuten if minuten is not None else 0,
+              "Status": status_wert,
+              "Notizen": notizen,
+          }]
+      )
+      st.session_state.protokoll = pd.concat(
+          [st.session_state.protokoll, neuer_eintrag], ignore_index=True
+      )
+      st.session_state.eintrag_modal_aktiv = False
+      st.success("Eintrag erfolgreich gespeichert!")
+      st.rerun()
+    if cancel_btn:
+      st.session_state.eintrag_modal_aktiv = False
+      st.rerun()
     st.write("---")
+
 
   # WOCHEN-ANSICHT (3x2 Raster wenn aktiviert)
   if st.session_state.wochen_ansicht_aktiv:
     st.write("### 📊 Detail-Auswertung der Kategorien (3x2)")
-
 
     def get_cat_stats(kat_name):
       if df.empty or kat_name not in df["Kategorie"].values:
@@ -388,10 +707,12 @@ if menu == "Startseite & Tagebuch":
             "🔴" if min_sum > 0 else "⚪",
         )
 
-
     kategorien_paare = [
         (("🏃‍♂️ Ausdauer", "Ausdauer"), ("🏋️‍♂️ Kraft", "Kraft")),
-        (("🚶‍♂️ Beweglichkeit", "Beweglichkeit"), ("📋 Selbstmanagement", "Selbstmanagement")),
+        (
+            (f"{beweglichkeit_icon_html(20)} Beweglichkeit", "Beweglichkeit"),
+            ("📋 Selbstmanagement", "Selbstmanagement"),
+        ),
         (("🍽️ Ernährung", "Ernährung"), ("😊 Gesamtbefinden", "Gesamtbefinden")),
     ]
 
@@ -484,7 +805,7 @@ elif menu == "Übungsarsenal":
     link = st.text_input("Link / URL")
     beschreibung = st.text_area("Beschreibung / Notiz")
 
-    arsenal_submitted = st.form_submit_button("Hinzufügen")
+    arsenal_submitted = st.form_submit_button("Hinzufügen", type="primary")
     if arsenal_submitted:
       neuer_link = pd.DataFrame(
           [{
