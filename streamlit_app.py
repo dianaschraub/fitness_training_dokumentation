@@ -96,24 +96,38 @@ def render_progress_ring_svg(minutes, goal, size=40, stroke_width=5):
 
 
 def render_icon_box(
-    icon_html, minutes, goal, box_height=88, icon_font_size=20, ring_size=42
+    icon_html, minutes, goal, box_height=88, icon_font_size=20, ring_size=42,
+    click_key=None,
 ):
   """Rendert eines der 6 Status-Kästchen (Woche/Heute) mit Icon oben und
   einem Fortschrittsring (samt Minutenzahl) darunter. Feste Höhe/Breite,
-  damit alle 6 Boxen garantiert gleich groß sind."""
+  damit alle 6 Boxen garantiert gleich groß sind. Wenn click_key gesetzt
+  ist, erscheint darunter ein kleiner Button, der die Detailliste dieser
+  Kategorie (click_key = (scope, kategorie)) öffnet."""
   ring_svg = render_progress_ring_svg(minutes, goal, size=ring_size)
   st.markdown(
       f"<div class='icon-box' style='text-align: center; background: white;"
-      f" padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;"
-      f" width: 100%; height: {box_height}px; box-sizing: border-box;"
-      f" display: flex; flex-direction: column; align-items: center;"
-      f" justify-content: center; gap: 4px; overflow: hidden;'>"
+      f" padding: 6px; border-radius: 8px 8px 0 0; border: 1px solid"
+      f" #d0edd2; border-bottom: none; width: 100%; height: {box_height}px;"
+      f" box-sizing: border-box; display: flex; flex-direction: column;"
+      f" align-items: center; justify-content: center; gap: 4px;"
+      f" overflow: hidden;'>"
       f"<span class='icon-box-symbol' style='font-size: {icon_font_size}px;"
       f" line-height: 1;'>{icon_html}</span>"
       f"{ring_svg}"
       f"</div>",
       unsafe_allow_html=True,
   )
+  if click_key is not None:
+    scope, kat_name = click_key
+    ist_aktiv = st.session_state.get("detail_ansicht") == click_key
+    if st.button(
+        "✕" if ist_aktiv else "🔍",
+        key=f"detailbtn_{scope}_{kat_name}",
+        use_container_width=True,
+    ):
+      st.session_state["detail_ansicht"] = None if ist_aktiv else click_key
+      st.rerun()
 
 
 
@@ -524,32 +538,38 @@ if True:
       render_icon_box(
           "🏃‍♂️", get_cat_minutes("Ausdauer"), 90,
           box_height=90, icon_font_size=20, ring_size=44,
+          click_key=("woche", "Ausdauer"),
       )
     with mini_col2:
       render_icon_box(
           "🏋️‍♂️", get_cat_minutes("Kraft"), 90,
           box_height=90, icon_font_size=20, ring_size=44,
+          click_key=("woche", "Kraft"),
       )
     with mini_col3:
       render_icon_box(
           beweglichkeit_icon_html(30),
           get_cat_minutes("Beweglichkeit"), 90,
           box_height=90, icon_font_size=20, ring_size=44,
+          click_key=("woche", "Beweglichkeit"),
       )
     with mini_col4:
       render_icon_box(
           "📋", get_cat_minutes("Selbstmanagement"), 90,
           box_height=90, icon_font_size=20, ring_size=44,
+          click_key=("woche", "Selbstmanagement"),
       )
     with mini_col5:
       render_icon_box(
           "🍽️", get_cat_minutes("Ernährung"), 90,
           box_height=90, icon_font_size=20, ring_size=44,
+          click_key=("woche", "Ernährung"),
       )
     with mini_col6:
       render_icon_box(
           "😊", get_cat_minutes("Gesamtbefinden"), 90,
           box_height=90, icon_font_size=20, ring_size=44,
+          click_key=("woche", "Gesamtbefinden"),
       )
 
     st.write("")
@@ -565,33 +585,76 @@ if True:
       render_icon_box(
           "🏃‍♂️", get_today_minutes("Ausdauer"), 90,
           box_height=80, icon_font_size=18, ring_size=38,
+          click_key=("heute", "Ausdauer"),
       )
     with t_col2:
       render_icon_box(
           "🏋️‍♂️", get_today_minutes("Kraft"), 90,
           box_height=80, icon_font_size=18, ring_size=38,
+          click_key=("heute", "Kraft"),
       )
     with t_col3:
       render_icon_box(
           beweglichkeit_icon_html(26),
           get_today_minutes("Beweglichkeit"), 90,
           box_height=80, icon_font_size=18, ring_size=38,
+          click_key=("heute", "Beweglichkeit"),
       )
     with t_col4:
       render_icon_box(
           "📋", get_today_minutes("Selbstmanagement"), 90,
           box_height=80, icon_font_size=18, ring_size=38,
+          click_key=("heute", "Selbstmanagement"),
       )
     with t_col5:
       render_icon_box(
           "🍽️", get_today_minutes("Ernährung"), 90,
           box_height=80, icon_font_size=18, ring_size=38,
+          click_key=("heute", "Ernährung"),
       )
     with t_col6:
       render_icon_box(
           "😊", get_today_minutes("Gesamtbefinden"), 90,
           box_height=80, icon_font_size=18, ring_size=38,
+          click_key=("heute", "Gesamtbefinden"),
       )
+
+    # Detail-Liste, wenn eine Kachel (Woche oder Heute) angeklickt wurde
+    if st.session_state.get("detail_ansicht") is not None:
+      detail_scope, detail_kat = st.session_state["detail_ansicht"]
+      if detail_scope == "woche":
+        detail_df = df[
+            (df["Datum"] >= str(start_der_woche))
+            & (df["Datum"] <= str(ende_der_woche))
+            & (df["Kategorie"] == detail_kat)
+        ]
+        zeitraum_text = f"Woche {kalenderwoche} ({datum_string})"
+      else:
+        detail_df = df[
+            (df["Datum"] == str(heute)) & (df["Kategorie"] == detail_kat)
+        ]
+        zeitraum_text = "Heute"
+
+      st.write("---")
+      st.markdown(f"#### {detail_kat} – {zeitraum_text}")
+      if detail_df.empty:
+        st.info(f"Noch keine Einträge für {detail_kat} in diesem Zeitraum.")
+      else:
+        anzeige_spalten = [
+            c
+            for c in [
+                "Datum", "Unterkategorie", "Minuten", "Status", "Notizen"
+            ]
+            if c in detail_df.columns
+        ]
+        st.dataframe(
+            detail_df[anzeige_spalten].sort_values("Datum"),
+            use_container_width=True,
+            hide_index=True,
+        )
+      if st.button("✕ Schließen", key="detail_schliessen_btn"):
+        st.session_state["detail_ansicht"] = None
+        st.rerun()
 
     st.write("")
 
