@@ -240,7 +240,7 @@ if "arsenal" not in st.session_state:
       [
           {
               "Kategorie": "Beweglichkeit",
-              "Typ": "Übung",
+              "Typ": "Text",
               "Bereich / Übung": "Mobilisation & Dehnen",
               "Link": "https://example.com/mobilitaet",
               "Beschreibung": "Tägliche Routine für den Rücken",
@@ -248,7 +248,7 @@ if "arsenal" not in st.session_state:
           },
           {
               "Kategorie": "Kraft",
-              "Typ": "Übung",
+              "Typ": "Text",
               "Bereich / Übung": "Kräftigung Rumpf",
               "Link": "https://example.com/ruecken",
               "Beschreibung": "Aufrechte Haltung, Bauchspannung halten",
@@ -267,7 +267,7 @@ ARSENAL_KATEGORIEN = [
     "Ernährung",
     "Gesamtbefinden",
 ]
-ARSENAL_TYPEN = ["Übung", "Video", "Link", "Bild"]
+ARSENAL_TYPEN = ["Text", "Video", "Link", "Bild"]
 
 if "wochen_ansicht_aktiv" not in st.session_state:
   st.session_state.wochen_ansicht_aktiv = False
@@ -833,15 +833,29 @@ if True:
   st.write("Deine Sammlung von Links, Bereichen und Übungs-Hinweisen.")
 
   with st.container(key="arsenalcard"):
-    st.dataframe(
-        st.session_state.arsenal,
-        use_container_width=True,
-        column_config={
-            "Bild": st.column_config.ImageColumn(
-                "Bild", help="Screenshot / Foto zur Übung"
-            ),
-        },
-    )
+    if st.session_state.arsenal.empty:
+      st.info("Noch keine Einträge im Übungsarsenal.")
+    else:
+      for _, eintrag in st.session_state.arsenal.iterrows():
+        with st.container(border=True):
+          st.markdown(
+              f"<div style='display:flex; justify-content:space-between;"
+              f" align-items:center; flex-wrap:wrap; gap:6px;'>"
+              f"<span style='font-weight:700; font-size:16px;'>"
+              f"{eintrag.get('Bereich / Übung', '')}</span>"
+              f"<span style='background:#e2efe3; color:#2f5e45;"
+              f" padding:2px 10px; border-radius:12px; font-size:12px;"
+              f" font-weight:600; white-space:nowrap;'>"
+              f"{eintrag.get('Kategorie', '')} · {eintrag.get('Typ', '')}"
+              f"</span></div>",
+              unsafe_allow_html=True,
+          )
+          if eintrag.get("Beschreibung"):
+            st.write(eintrag["Beschreibung"])
+          if eintrag.get("Link"):
+            st.markdown(f"🔗 [{eintrag['Link']}]({eintrag['Link']})")
+          if eintrag.get("Bild"):
+            st.image(eintrag["Bild"], use_container_width=True)
 
     st.write("")
     if "arsenal_form_aktiv" not in st.session_state:
