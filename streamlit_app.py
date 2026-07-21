@@ -125,18 +125,17 @@ if menu == "Startseite & Tagebuch":
       return "🔴"
 
 
-  # --- CSS FÜR GRÜNEN HINTERGRUND UND BLAUEN BUTTON ---
+  # --- ROBUSTER CSS-BLOCK FÜR DEN GRÜNEN HAUPTKASTEN ---
   st.markdown(
       """
         <style>
-        .green-wrapper {
+        .stMainBlockContainer [data-testid="stVerticalBlock"] > div:has(div.dash-card) {
             background-color: #e2efe3;
             border: 1px solid #c8dbc9;
             border-radius: 14px;
             padding: 20px;
             margin-bottom: 25px;
         }
-        /* Zwingt den Eintrag erstellen Button zum sauberen Blau */
         div.stButton > button:first-child {
             background-color: #0077b6 !important;
             color: white !important;
@@ -148,12 +147,13 @@ if menu == "Startseite & Tagebuch":
             background-color: #023e8a !important;
         }
         </style>
-        <div class="green-wrapper">
         """,
       unsafe_allow_html=True,
   )
 
-  # Wochen-Kopfzeile
+  # Wir öffnen den Bereich mit einer Markierung für das CSS
+  st.markdown('<div class="dash-card">', unsafe_allow_html=True)
+
   col_w1, col_w2, col_w3 = st.columns([1, 4, 1])
   with col_w1:
     if st.button("⬅️", key="w_back", use_container_width=True):
@@ -306,17 +306,17 @@ if menu == "Startseite & Tagebuch":
 
   st.write("")
 
-  # Blauer Button "Eintrag erstellen"
+  # Blauer Button "Eintrag erstellen" als letztes Element im Kasten
   if st.button(
       "➕ Eintrag erstellen", key="btn_create", use_container_width=True
   ):
     st.session_state.eintrag_modal_aktiv = True
     st.rerun()
 
-  # Schließen des grünen HTML-Containers
+  # Kasten schließen
   st.markdown("</div>", unsafe_allow_html=True)
 
-  # Formular für Eintrag (außerhalb des grünen Containers)
+  # Formular für Eintrag (außerhalb des Kastens)
   if st.session_state.get("eintrag_modal_aktiv", False):
     st.write("### 📝 Neuen Eintrag erfassen")
     with st.form(key="kategorie_form"):
