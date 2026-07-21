@@ -1,4 +1,4 @@
-import datetime
+        import datetime
 import pandas as pd
 import streamlit as st
 
@@ -83,6 +83,18 @@ if menu == "Startseite & Tagebuch":
         f" {ende_monat} {ende_der_woche.year}"
     )
 
+  # Deutsches Datumsformat für "Heute" (z.B. Dienstag, 21. Juli 2026)
+  wochentage_de = [
+      "Montag",
+      "Dienstag",
+      "Mittwoch",
+      "Donnerstag",
+      "Freitag",
+      "Samstag",
+      "Sonntag",
+  ]
+  heute_string = f"{wochentage_de[heute.weekday()]}, {heute.day}. {monate[heute.month - 1]} {heute.year}"
+
   # Wochen-Kopfzeile
   col_w1, col_w2, col_w3 = st.columns([1, 4, 1])
   with col_w1:
@@ -92,7 +104,6 @@ if menu == "Startseite & Tagebuch":
       )
       st.rerun()
   with col_w2:
-    # Klickbare Wochen-Überschrift zum Umschalten der Detailansicht
     wochen_titel_text = (
         f"Woche {kalenderwoche} (Details ausblenden)"
         if st.session_state.wochen_ansicht_aktiv
@@ -114,10 +125,10 @@ if menu == "Startseite & Tagebuch":
       )
       st.rerun()
 
-  # Hilfsfunktion für den Status
   df = st.session_state.protokoll
 
 
+  # Hilfsfunktionen für Symbole und Ampelfarben (größer & deutlicher)
   def get_cat_symbol(kat_name):
     if df.empty or kat_name not in df["Kategorie"].values:
       return "⚪"
@@ -130,38 +141,92 @@ if menu == "Startseite & Tagebuch":
       return "🔴" if min_sum > 0 else "⚪"
 
 
-  # Kleine Mini-Ampel Leiste direkt unter der Woche
+  def get_today_symbol(kat_name):
+    if df.empty:
+      return "⚪"
+    # Prüfen ob es einen Eintrag für heute in dieser Kategorie gibt
+    heute_str = str(heute)
+    heute_df = df[(df["Datum"] == heute_str) & (df["Kategorie"] == kat_name)]
+    if heute_df.empty:
+      return "⚪"
+    min_sum = heute_df["Minuten"].sum()
+    if min_sum >= 30:
+      return "🟢"
+    elif min_sum > 0:
+      return "🟡"
+    else:
+      return "🔴"
+
+
+  # --- BEREICH: WOCHE (Große Symbole & deutliche Farben) ---
+  st.markdown("#### **Woche**")
   mini_col1, mini_col2, mini_col3, mini_col4, mini_col5, mini_col6 = (
       st.columns(6)
   )
   with mini_col1:
     st.markdown(
-        f"<p style='text-align: center; font-size: 12px;'>🏃‍♂️<br>{get_cat_symbol('Ausdauer')}</p>",
+        f"<div style='text-align: center; font-size: 22px; background: #f0f2f6; padding: 8px; border-radius: 8px;'>🏃‍♂️<br><span style='font-size: 18px;'>{get_cat_symbol('Ausdauer')}</span></div>",
         unsafe_allow_html=True,
     )
   with mini_col2:
     st.markdown(
-        f"<p style='text-align: center; font-size: 12px;'>🏋️‍♂️<br>{get_cat_symbol('Kraft')}</p>",
+        f"<div style='text-align: center; font-size: 22px; background: #f0f2f6; padding: 8px; border-radius: 8px;'>🏋️‍♂️<br><span style='font-size: 18px;'>{get_cat_symbol('Kraft')}</span></div>",
         unsafe_allow_html=True,
     )
   with mini_col3:
     st.markdown(
-        f"<p style='text-align: center; font-size: 12px;'>🚶‍♂️<br>{get_cat_symbol('Beweglichkeit')}</p>",
+        f"<div style='text-align: center; font-size: 22px; background: #f0f2f6; padding: 8px; border-radius: 8px;'>🚶‍♂️<br><span style='font-size: 18px;'>{get_cat_symbol('Beweglichkeit')}</span></div>",
         unsafe_allow_html=True,
     )
   with mini_col4:
     st.markdown(
-        f"<p style='text-align: center; font-size: 12px;'>📋<br>{get_cat_symbol('Selbstmanagement')}</p>",
+        f"<div style='text-align: center; font-size: 22px; background: #f0f2f6; padding: 8px; border-radius: 8px;'>📋<br><span style='font-size: 18px;'>{get_cat_symbol('Selbstmanagement')}</span></div>",
         unsafe_allow_html=True,
     )
   with mini_col5:
     st.markdown(
-        f"<p style='text-align: center; font-size: 12px;'>🍽️<br>{get_cat_symbol('Ernährung')}</p>",
+        f"<div style='text-align: center; font-size: 22px; background: #f0f2f6; padding: 8px; border-radius: 8px;'>🍽️<br><span style='font-size: 18px;'>{get_cat_symbol('Ernährung')}</span></div>",
         unsafe_allow_html=True,
     )
   with mini_col6:
     st.markdown(
-        f"<p style='text-align: center; font-size: 12px;'>😊<br>{get_cat_symbol('Gesamtbefinden')}</p>",
+        f"<div style='text-align: center; font-size: 22px; background: #f0f2f6; padding: 8px; border-radius: 8px;'>😊<br><span style='font-size: 18px;'>{get_cat_symbol('Gesamtbefinden')}</span></div>",
+        unsafe_allow_html=True,
+    )
+
+  st.write("")
+
+  # --- BEREICH: HEUTE (Tagesansicht genau wie im Screenshot) ---
+  st.markdown(f"#### **Heute** <span style='font-size: 14px; color: gray; float: right;'>{heute_string}</span>", unsafe_allow_html=True)
+  t_col1, t_col2, t_col3, t_col4, t_col5, t_col6 = st.columns(6)
+  with t_col1:
+    st.markdown(
+        f"<div style='text-align: center; font-size: 20px; background: #eef2f5; padding: 6px; border-radius: 8px;'>🏃‍♂️<br><span style='font-size: 16px;'>{get_today_symbol('Ausdauer')}</span></div>",
+        unsafe_allow_html=True,
+    )
+  with t_col2:
+    st.markdown(
+        f"<div style='text-align: center; font-size: 20px; background: #eef2f5; padding: 6px; border-radius: 8px;'>🏋️‍♂️<br><span style='font-size: 16px;'>{get_today_symbol('Kraft')}</span></div>",
+        unsafe_allow_html=True,
+    )
+  with t_col3:
+    st.markdown(
+        f"<div style='text-align: center; font-size: 20px; background: #eef2f5; padding: 6px; border-radius: 8px;'>🚶‍♂️<br><span style='font-size: 16px;'>{get_today_symbol('Beweglichkeit')}</span></div>",
+        unsafe_allow_html=True,
+    )
+  with t_col4:
+    st.markdown(
+        f"<div style='text-align: center; font-size: 20px; background: #eef2f5; padding: 6px; border-radius: 8px;'>📋<br><span style='font-size: 16px;'>{get_today_symbol('Selbstmanagement')}</span></div>",
+        unsafe_allow_html=True,
+    )
+  with t_col5:
+    st.markdown(
+        f"<div style='text-align: center; font-size: 20px; background: #eef2f5; padding: 6px; border-radius: 8px;'>🍽️<br><span style='font-size: 16px;'>{get_today_symbol('Ernährung')}</span></div>",
+        unsafe_allow_html=True,
+    )
+  with t_col6:
+    st.markdown(
+        f"<div style='text-align: center; font-size: 20px; background: #eef2f5; padding: 6px; border-radius: 8px;'>😊<br><span style='font-size: 16px;'>{get_today_symbol('Gesamtbefinden')}</span></div>",
         unsafe_allow_html=True,
     )
 
@@ -172,7 +237,7 @@ if menu == "Startseite & Tagebuch":
     st.session_state.eintrag_modal_aktiv = True
     st.rerun()
 
-  # Wenn der Nutzer auf Eintrag erstellen geklickt hat, zeigen wir das Formular direkt an
+  # Eingabe-Formular bei Klick
   if st.session_state.get("eintrag_modal_aktiv", False):
     st.write("### 📝 Neuen Eintrag erfassen")
     with st.form(key="kategorie_form"):
@@ -187,7 +252,7 @@ if menu == "Startseite & Tagebuch":
               "Gesamtbefinden",
           ],
       )
-      datum = st.date_input("Datum")
+      datum = st.date_input("Datum", value=heute)
       minuten = st.number_input(
           "Minuten", min_value=0, max_value=300, value=30
       )
@@ -246,7 +311,6 @@ if menu == "Startseite & Tagebuch":
         )
 
 
-    # 6 Kategorien in 3 Zeilen a 2 Spalten aufteilen
     kategorien_paare = [
         (("🏃‍♂️ Ausdauer", "Ausdauer"), ("🏋️‍♂️ Kraft", "Kraft")),
         (("🚶‍♂️ Beweglichkeit", "Beweglichkeit"), ("📋 Selbstmanagement", "Selbstmanagement")),
@@ -255,7 +319,6 @@ if menu == "Startseite & Tagebuch":
 
     for kat1, kat2 in kategorien_paare:
       c1, c2 = st.columns(2)
-
       m1, text1, sym1 = get_cat_stats(kat1[1])
       with c1:
         st.markdown(
@@ -280,7 +343,6 @@ if menu == "Startseite & Tagebuch":
             unsafe_allow_html=True,
         )
 
-    # Gesamtauswertung Kachel am Ende
     gesamt_minuten = df["Minuten"].sum() if not df.empty else 0
     if gesamt_minuten >= 90:
       g_sym, g_text = "🟢", f"{gesamt_minuten} min — Ausreichend (Ziel erreicht)"
