@@ -276,7 +276,8 @@ if menu == "Startseite & Tagebuch":
       st.markdown(
           f"<div style='text-align: center; background: white;"
           f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>{beweglichkeit_icon_html(24)}<br><span"
+          f" #d0edd2; width: 100%; box-sizing: border-box;'>"
+          f"{beweglichkeit_icon_html(24)}<br><span"
           f" style='font-size:"
           f" 16px;'>{get_cat_symbol('Beweglichkeit')}</span></div>",
           unsafe_allow_html=True,
@@ -337,7 +338,8 @@ if menu == "Startseite & Tagebuch":
       st.markdown(
           f"<div style='text-align: center; background: white;"
           f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>{beweglichkeit_icon_html(20)}<br><span"
+          f" #d0edd2; width: 100%; box-sizing: border-box;'>"
+          f"{beweglichkeit_icon_html(20)}<br><span"
           f" style='font-size:"
           f" 15px;'>{get_today_symbol('Beweglichkeit')}</span></div>",
           unsafe_allow_html=True,
@@ -371,10 +373,13 @@ if menu == "Startseite & Tagebuch":
 
     st.write("")
 
-    # Blauer Button "Eintrag erstellen" - jetzt garantiert INNERHALB
+    # Grüner Button "Eintrag erstellen" - jetzt garantiert INNERHALB
     # des grünen Kastens, da er im selben st.container(key="dashcard") steht.
+    # Statt dem bunten ➕-Emoji (auf dunklem Grund schlecht erkennbar) wird
+    # ein normales "+"-Zeichen verwendet, das die weiße Button-Schriftfarbe
+    # übernimmt und damit gut sichtbar ist.
     if st.button(
-        "➕ Eintrag erstellen",
+        "＋ Eintrag erstellen",
         key="btn_create",
         use_container_width=True,
         type="primary",
