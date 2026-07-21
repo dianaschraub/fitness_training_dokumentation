@@ -1,4 +1,5 @@
 import base64
+import math
 import datetime
 import pandas as pd
 import streamlit as st
@@ -48,6 +49,70 @@ def beweglichkeit_icon_html(size_px):
       f"<img src='data:image/png;base64,{BEWEGLICHKEIT_ICON_B64}' "
       f"style='height:{size_px}px; width:{size_px}px; object-fit:contain; "
       f"vertical-align:middle;' />"
+  )
+
+
+def get_status_color(minutes, goal):
+  """Liefert die Statusfarbe passend zur bisherigen Ampel-Logik
+  (grau = nichts, rot = wenig, gelb = mittel, grün = Ziel erreicht),
+  aber verhältnisbasiert, damit sie zum Ring-Füllstand passt."""
+  if minutes <= 0:
+    return "#c9c9c9"
+  ratio = minutes / goal if goal else 0
+  if ratio >= 1:
+    return "#2e7d46"
+  elif ratio >= 0.66:
+    return "#e3a008"
+  else:
+    return "#d9534f"
+
+
+def render_progress_ring_svg(minutes, goal, size=40, stroke_width=5):
+  """Baut ein Ring-Fortschrittsdiagramm (Donut) als SVG: Füllstand
+  proportional zu minutes/goal, Minutenzahl in der Mitte."""
+  ratio = 0 if not goal else min(minutes / goal, 1.0)
+  color = get_status_color(minutes, goal)
+  radius = (size - stroke_width) / 2
+  circumference = 2 * math.pi * radius
+  offset = circumference * (1 - ratio)
+  center = size / 2
+  font_size = max(9, round(size * 0.32))
+  return (
+      f"<svg width='{size}' height='{size}' viewBox='0 0 {size} {size}'"
+      f" style='display:block;'>"
+      f"<circle cx='{center}' cy='{center}' r='{radius}' fill='none'"
+      f" stroke='#e9e9e9' stroke-width='{stroke_width}' />"
+      f"<circle cx='{center}' cy='{center}' r='{radius}' fill='none'"
+      f" stroke='{color}' stroke-width='{stroke_width}'"
+      f" stroke-linecap='round'"
+      f" stroke-dasharray='{circumference:.2f}'"
+      f" stroke-dashoffset='{offset:.2f}'"
+      f" transform='rotate(-90 {center} {center})' />"
+      f"<text x='{center}' y='{center + font_size * 0.36:.1f}'"
+      f" text-anchor='middle' font-size='{font_size}' font-weight='700'"
+      f" fill='#333'>{int(minutes)}</text>"
+      f"</svg>"
+  )
+
+
+def render_icon_box(
+    icon_html, minutes, goal, box_height=88, icon_font_size=20, ring_size=42
+):
+  """Rendert eines der 6 Status-Kästchen (Woche/Heute) mit Icon oben und
+  einem Fortschrittsring (samt Minutenzahl) darunter. Feste Höhe/Breite,
+  damit alle 6 Boxen garantiert gleich groß sind."""
+  ring_svg = render_progress_ring_svg(minutes, goal, size=ring_size)
+  st.markdown(
+      f"<div style='text-align: center; background: white; padding: 6px;"
+      f" border-radius: 8px; border: 1px solid #d0edd2; width: 100%;"
+      f" height: {box_height}px; box-sizing: border-box; display: flex;"
+      f" flex-direction: column; align-items: center; justify-content:"
+      f" center; gap: 4px;'>"
+      f"<span style='font-size: {icon_font_size}px; line-height: 1;'>"
+      f"{icon_html}</span>"
+      f"{ring_svg}"
+      f"</div>",
+      unsafe_allow_html=True,
   )
 
 # Initialisierung des Session State für Daten
@@ -139,31 +204,19 @@ if menu == "Startseite & Tagebuch":
 
   df = st.session_state.protokoll
 
-  def get_cat_symbol(kat_name):
+  def get_cat_minutes(kat_name):
     if df.empty or kat_name not in df["Kategorie"].values:
-      return "⚪"
-    min_sum = df[df["Kategorie"] == kat_name]["Minuten"].sum()
-    if min_sum >= 90:
-      return "🟢"
-    elif min_sum >= 60:
-      return "🟡"
-    else:
-      return "🔴" if min_sum > 0 else "⚪"
+      return 0
+    return int(df[df["Kategorie"] == kat_name]["Minuten"].sum())
 
-  def get_today_symbol(kat_name):
+  def get_today_minutes(kat_name):
     if df.empty:
-      return "⚪"
+      return 0
     heute_str = str(heute)
     heute_df = df[(df["Datum"] == heute_str) & (df["Kategorie"] == kat_name)]
     if heute_df.empty:
-      return "⚪"
-    min_sum = heute_df["Minuten"].sum()
-    if min_sum >= 30:
-      return "🟢"
-    elif min_sum > 0:
-      return "🟡"
-    else:
-      return "🔴"
+      return 0
+    return int(heute_df["Minuten"].sum())
 
   # --- CSS für den grünen Hauptkasten ---
   # Wichtig: st.container(key="dashcard") erzeugt eine echte Wrapper-Div
@@ -257,56 +310,35 @@ if menu == "Startseite & Tagebuch":
         st.columns(6)
     )
     with mini_col1:
-      st.markdown(
-          f"<div style='text-align: center; font-size: 20px; background: white;"
-          f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>🏃‍♂️<br><span"
-          f" style='font-size: 16px;'>{get_cat_symbol('Ausdauer')}</span></div>",
-          unsafe_allow_html=True,
+      render_icon_box(
+          "🏃‍♂️", get_cat_minutes("Ausdauer"), 90,
+          box_height=90, icon_font_size=20, ring_size=44,
       )
     with mini_col2:
-      st.markdown(
-          f"<div style='text-align: center; font-size: 20px; background: white;"
-          f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>🏋️‍♂️<br><span"
-          f" style='font-size: 16px;'>{get_cat_symbol('Kraft')}</span></div>",
-          unsafe_allow_html=True,
+      render_icon_box(
+          "🏋️‍♂️", get_cat_minutes("Kraft"), 90,
+          box_height=90, icon_font_size=20, ring_size=44,
       )
     with mini_col3:
-      st.markdown(
-          f"<div style='text-align: center; background: white;"
-          f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2; width: 100%; box-sizing: border-box;'>"
-          f"{beweglichkeit_icon_html(24)}<br><span"
-          f" style='font-size:"
-          f" 16px;'>{get_cat_symbol('Beweglichkeit')}</span></div>",
-          unsafe_allow_html=True,
+      render_icon_box(
+          beweglichkeit_icon_html(30),
+          get_cat_minutes("Beweglichkeit"), 90,
+          box_height=90, icon_font_size=20, ring_size=44,
       )
     with mini_col4:
-      st.markdown(
-          f"<div style='text-align: center; font-size: 20px; background: white;"
-          f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>📋<br><span"
-          f" style='font-size:"
-          f" 16px;'>{get_cat_symbol('Selbstmanagement')}</span></div>",
-          unsafe_allow_html=True,
+      render_icon_box(
+          "📋", get_cat_minutes("Selbstmanagement"), 90,
+          box_height=90, icon_font_size=20, ring_size=44,
       )
     with mini_col5:
-      st.markdown(
-          f"<div style='text-align: center; font-size: 20px; background: white;"
-          f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>🍽️<br><span"
-          f" style='font-size: 16px;'>{get_cat_symbol('Ernährung')}</span></div>",
-          unsafe_allow_html=True,
+      render_icon_box(
+          "🍽️", get_cat_minutes("Ernährung"), 90,
+          box_height=90, icon_font_size=20, ring_size=44,
       )
     with mini_col6:
-      st.markdown(
-          f"<div style='text-align: center; font-size: 20px; background: white;"
-          f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>😊<br><span"
-          f" style='font-size:"
-          f" 16px;'>{get_cat_symbol('Gesamtbefinden')}</span></div>",
-          unsafe_allow_html=True,
+      render_icon_box(
+          "😊", get_cat_minutes("Gesamtbefinden"), 90,
+          box_height=90, icon_font_size=20, ring_size=44,
       )
 
     st.write("")
@@ -319,56 +351,35 @@ if menu == "Startseite & Tagebuch":
     )
     t_col1, t_col2, t_col3, t_col4, t_col5, t_col6 = st.columns(6)
     with t_col1:
-      st.markdown(
-          f"<div style='text-align: center; font-size: 18px; background: white;"
-          f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>🏃‍♂️<br><span"
-          f" style='font-size: 15px;'>{get_today_symbol('Ausdauer')}</span></div>",
-          unsafe_allow_html=True,
+      render_icon_box(
+          "🏃‍♂️", get_today_minutes("Ausdauer"), 90,
+          box_height=80, icon_font_size=18, ring_size=38,
       )
     with t_col2:
-      st.markdown(
-          f"<div style='text-align: center; font-size: 18px; background: white;"
-          f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>🏋️‍♂️<br><span"
-          f" style='font-size: 15px;'>{get_today_symbol('Kraft')}</span></div>",
-          unsafe_allow_html=True,
+      render_icon_box(
+          "🏋️‍♂️", get_today_minutes("Kraft"), 90,
+          box_height=80, icon_font_size=18, ring_size=38,
       )
     with t_col3:
-      st.markdown(
-          f"<div style='text-align: center; background: white;"
-          f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2; width: 100%; box-sizing: border-box;'>"
-          f"{beweglichkeit_icon_html(20)}<br><span"
-          f" style='font-size:"
-          f" 15px;'>{get_today_symbol('Beweglichkeit')}</span></div>",
-          unsafe_allow_html=True,
+      render_icon_box(
+          beweglichkeit_icon_html(26),
+          get_today_minutes("Beweglichkeit"), 90,
+          box_height=80, icon_font_size=18, ring_size=38,
       )
     with t_col4:
-      st.markdown(
-          f"<div style='text-align: center; font-size: 18px; background: white;"
-          f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>📋<br><span"
-          f" style='font-size:"
-          f" 15px;'>{get_today_symbol('Selbstmanagement')}</span></div>",
-          unsafe_allow_html=True,
+      render_icon_box(
+          "📋", get_today_minutes("Selbstmanagement"), 90,
+          box_height=80, icon_font_size=18, ring_size=38,
       )
     with t_col5:
-      st.markdown(
-          f"<div style='text-align: center; font-size: 18px; background: white;"
-          f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>🍽️<br><span"
-          f" style='font-size: 15px;'>{get_today_symbol('Ernährung')}</span></div>",
-          unsafe_allow_html=True,
+      render_icon_box(
+          "🍽️", get_today_minutes("Ernährung"), 90,
+          box_height=80, icon_font_size=18, ring_size=38,
       )
     with t_col6:
-      st.markdown(
-          f"<div style='text-align: center; font-size: 18px; background: white;"
-          f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>😊<br><span"
-          f" style='font-size:"
-          f" 15px;'>{get_today_symbol('Gesamtbefinden')}</span></div>",
-          unsafe_allow_html=True,
+      render_icon_box(
+          "😊", get_today_minutes("Gesamtbefinden"), 90,
+          box_height=80, icon_font_size=18, ring_size=38,
       )
 
     st.write("")
@@ -462,7 +473,7 @@ if menu == "Startseite & Tagebuch":
     kategorien_paare = [
         (("🏃‍♂️ Ausdauer", "Ausdauer"), ("🏋️‍♂️ Kraft", "Kraft")),
         (
-            (f"{beweglichkeit_icon_html(16)} Beweglichkeit", "Beweglichkeit"),
+            (f"{beweglichkeit_icon_html(20)} Beweglichkeit", "Beweglichkeit"),
             ("📋 Selbstmanagement", "Selbstmanagement"),
         ),
         (("🍽️ Ernährung", "Ernährung"), ("😊 Gesamtbefinden", "Gesamtbefinden")),
