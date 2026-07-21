@@ -130,6 +130,32 @@ def render_icon_box(
       st.rerun()
 
 
+def render_arsenal_tile(icon_html, kat_name, anzahl, box_height=82):
+  """Klickbare Kategorie-Kachel fürs Übungsarsenal - gleiche Optik/Logik
+  wie die Kacheln oben im Tagebuch, damit es einheitlich aussieht."""
+  st.markdown(
+      f"<div class='icon-box' style='text-align:center; background:white;"
+      f" padding:6px; border-radius:8px 8px 0 0; border:1px solid #d0edd2;"
+      f" border-bottom:none; width:100%; height:{box_height}px;"
+      f" box-sizing:border-box; display:flex; flex-direction:column;"
+      f" align-items:center; justify-content:center; gap:2px;'>"
+      f"<span style='font-size:20px; line-height:1;'>{icon_html}</span>"
+      f"<span style='font-size:11px; font-weight:700; color:#2f5e45;"
+      f" line-height:1.2;'>{kat_name}</span>"
+      f"<span style='font-size:11px; color:#777;'>({anzahl})</span>"
+      f"</div>",
+      unsafe_allow_html=True,
+  )
+  ist_aktiv = st.session_state.get("arsenal_detail_kat") == kat_name
+  if st.button(
+      "✕" if ist_aktiv else "🔍",
+      key=f"arsenaltile_{kat_name}",
+      use_container_width=True,
+  ):
+    st.session_state["arsenal_detail_kat"] = None if ist_aktiv else kat_name
+    st.rerun()
+
+
 
 @st.dialog("Sonstiges – bitte kurz beschreiben")
 def sonstiges_dialog(state_key):
@@ -1197,11 +1223,33 @@ if True:
       st.info("Noch keine Einträge im Übungsarsenal.")
     else:
       arsenal_df = st.session_state.arsenal
-      for kat in ARSENAL_KATEGORIEN:
-        kat_eintraege = arsenal_df[arsenal_df["Kategorie"] == kat]
+      arsenal_icons = {
+          "Ausdauer": "🏃‍♂️",
+          "Kraft": "🏋️‍♂️",
+          "Beweglichkeit": beweglichkeit_icon_html(22),
+          "Selbstmanagement": "📋",
+          "Ernährung": "🍽️",
+          "Gesamtbefinden": "😊",
+      }
+
+      a_col1, a_col2, a_col3, a_col4, a_col5, a_col6 = st.columns(6)
+      for spalte, kat in zip(
+          [a_col1, a_col2, a_col3, a_col4, a_col5, a_col6],
+          ARSENAL_KATEGORIEN,
+      ):
+        with spalte:
+          anzahl = len(arsenal_df[arsenal_df["Kategorie"] == kat])
+          render_arsenal_tile(arsenal_icons.get(kat, "📌"), kat, anzahl)
+
+      # Detail-Liste für die angeklickte Kategorie
+      aktive_kat = st.session_state.get("arsenal_detail_kat")
+      if aktive_kat is not None:
+        kat_eintraege = arsenal_df[arsenal_df["Kategorie"] == aktive_kat]
+        st.write("---")
+        st.markdown(f"#### {aktive_kat} ({len(kat_eintraege)})")
         if kat_eintraege.empty:
-          continue
-        with st.expander(f"{kat} ({len(kat_eintraege)})"):
+          st.info(f"Noch keine Einträge für {aktive_kat}.")
+        else:
           for _, eintrag in kat_eintraege.iterrows():
             with st.container(border=True):
               st.markdown(
@@ -1221,6 +1269,9 @@ if True:
                 st.markdown(f"🔗 [{eintrag['Link']}]({eintrag['Link']})")
               if eintrag.get("Bild"):
                 st.image(eintrag["Bild"], use_container_width=True)
+        if st.button("✕ Schließen", key="arsenal_detail_schliessen_btn"):
+          st.session_state["arsenal_detail_kat"] = None
+          st.rerun()
 
       # Falls Einträge eine Kategorie außerhalb der Standardliste haben
       # (z.B. durch ältere Daten), trotzdem anzeigen statt zu verschlucken
