@@ -267,10 +267,21 @@ ARSENAL_KATEGORIEN = [
     "Ernährung",
     "Gesamtbefinden",
 ]
-ARSENAL_TYPEN = ["Text", "Video", "Link", "Bild"]
+ARSENAL_TYPEN = ["Bild", "Link", "Text", "Video"]
 
 if "wochen_ansicht_aktiv" not in st.session_state:
   st.session_state.wochen_ansicht_aktiv = False
+
+# Vitaldaten: Schritte & Gewicht (manuell oder per CSV-Import von
+# Garmin/Google Fit erfasst)
+if "vitaldaten" not in st.session_state:
+  st.session_state.vitaldaten = pd.DataFrame(
+      columns=["Datum", "Schritte", "Gewicht", "VO2max"]
+  )
+if "vital_form_aktiv" not in st.session_state:
+  st.session_state.vital_form_aktiv = False
+if "vital_import_aktiv" not in st.session_state:
+  st.session_state.vital_import_aktiv = False
 
 # ----------------------------------------------------
 # 1. STARTSEITE & TAGEBUCH
@@ -363,6 +374,15 @@ if True:
 
         /* Gleiche Kartenoptik wie beim Tagebuch, für das Übungsarsenal */
         div.st-key-arsenalcard {
+            background-color: #e2efe3;
+            border: 1px solid #c8dbc9;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        /* Gleiche Kartenoptik für die Vitalwerte-Karte (Schritte/Gewicht/BMI) */
+        div.st-key-vitalcard {
             background-color: #e2efe3;
             border: 1px solid #c8dbc9;
             border-radius: 14px;
@@ -800,6 +820,258 @@ if True:
         unsafe_allow_html=True,
     )
     st.write("---")
+
+  # ----------------------------------------------------
+  # VITALWERTE: Schritte, Gewicht, BMI
+  # ----------------------------------------------------
+  vital_df = st.session_state.vitaldaten
+
+  def _vital_heute(spalte):
+    if vital_df.empty:
+      return None
+    treffer = vital_df[vital_df["Datum"] == str(heute)]
+    if treffer.empty or treffer[spalte].dropna().empty:
+      return None
+    return treffer[spalte].dropna().iloc[-1]
+
+  def _vital_woche_avg(spalte):
+    if vital_df.empty:
+      return None
+    woche_df = vital_df[
+        (vital_df["Datum"] >= str(start_der_woche))
+        & (vital_df["Datum"] <= str(ende_der_woche))
+    ]
+    werte = woche_df[spalte].dropna()
+    if werte.empty:
+      return None
+    return werte.mean()
+
+  def _vital_letzter_wert(spalte):
+    """Letzter bekannter (nicht-leerer) Wert insgesamt - für Werte wie
+    VO2max, die sich nicht täglich ändern, sondern nur gelegentlich neu
+    gemessen/geschätzt werden."""
+    if vital_df.empty or spalte not in vital_df.columns:
+      return None
+    sortiert = vital_df.sort_values("Datum")
+    werte = sortiert[spalte].dropna()
+    if werte.empty:
+      return None
+    return werte.iloc[-1]
+
+  schritte_heute = _vital_heute("Schritte")
+  schritte_woche_avg = _vital_woche_avg("Schritte")
+  gewicht_heute = _vital_heute("Gewicht")
+  gewicht_woche_avg = _vital_woche_avg("Gewicht")
+  vo2max_aktuell = _vital_letzter_wert("VO2max")
+
+  if "koerpergroesse_cm" not in st.session_state:
+    st.session_state.koerpergroesse_cm = None
+
+  bmi_wert = None
+  if gewicht_heute and st.session_state.koerpergroesse_cm:
+    groesse_m = st.session_state.koerpergroesse_cm / 100
+    bmi_wert = gewicht_heute / (groesse_m**2)
+
+  with st.container(key="vitalcard"):
+    st.subheader("📊 Vitalwerte")
+
+    groesse_input = st.number_input(
+        "Körpergröße (cm) – einmalig für BMI-Berechnung",
+        min_value=0,
+        max_value=250,
+        value=st.session_state.koerpergroesse_cm,
+        key="groesse_input",
+    )
+    st.session_state.koerpergroesse_cm = (
+        groesse_input if groesse_input else None
+    )
+
+    m_col1, m_col2, m_col3, m_col4, m_col5, m_col6 = st.columns(6)
+    with m_col1:
+      st.metric(
+          "Schritte heute",
+          f"{int(schritte_heute):,}".replace(",", ".")
+          if schritte_heute is not None
+          else "–",
+      )
+    with m_col2:
+      st.metric(
+          "Ø Schritte/Tag (Woche)",
+          f"{int(schritte_woche_avg):,}".replace(",", ".")
+          if schritte_woche_avg is not None
+          else "–",
+      )
+    with m_col3:
+      st.metric(
+          "Gewicht heute",
+          f"{gewicht_heute:.1f} kg" if gewicht_heute is not None else "–",
+      )
+    with m_col4:
+      st.metric(
+          "Ø Gewicht (Woche)",
+          f"{gewicht_woche_avg:.1f} kg"
+          if gewicht_woche_avg is not None
+          else "–",
+      )
+    with m_col5:
+      st.metric(
+          "BMI", f"{bmi_wert:.1f}" if bmi_wert is not None else "–"
+      )
+    with m_col6:
+      st.metric(
+          "VO2max (aktuell)",
+          f"{vo2max_aktuell:.1f}" if vo2max_aktuell is not None else "–",
+      )
+
+    st.write("")
+    col_v1, col_v2 = st.columns(2)
+    with col_v1:
+      if st.button(
+          "＋ Schritte/Gewicht eintragen",
+          key="btn_open_vital_form",
+          type="primary",
+          use_container_width=True,
+      ):
+        st.session_state.vital_form_aktiv = True
+        st.session_state.vital_import_aktiv = False
+        st.rerun()
+    with col_v2:
+      if st.button(
+          "⬆️ CSV importieren",
+          key="btn_open_vital_import",
+          use_container_width=True,
+      ):
+        st.session_state.vital_import_aktiv = True
+        st.session_state.vital_form_aktiv = False
+        st.rerun()
+
+    if st.session_state.vital_form_aktiv:
+      st.write("---")
+      v_datum = st.date_input("Datum", value=heute, key="vital_datum")
+      v_schritte = st.number_input(
+          "Schritte", min_value=0, max_value=100000, value=None,
+          key="vital_schritte_input",
+      )
+      v_gewicht = st.number_input(
+          "Gewicht (kg)", min_value=0.0, max_value=400.0, value=None,
+          step=0.1, key="vital_gewicht_input",
+      )
+      v_vo2max = st.number_input(
+          "VO2max (ml/kg/min) – optional, meist von der Uhr geschätzt",
+          min_value=0.0, max_value=100.0, value=None,
+          step=0.1, key="vital_vo2max_input",
+      )
+      col_vs1, col_vs2 = st.columns(2)
+      with col_vs1:
+        vital_save = st.button(
+            "Speichern", key="vital_save_btn", type="primary",
+            use_container_width=True,
+        )
+      with col_vs2:
+        vital_cancel = st.button(
+            "Abbrechen", key="vital_cancel_btn", use_container_width=True
+        )
+      if vital_save:
+        neuer_vital_eintrag = pd.DataFrame(
+            [{
+                "Datum": str(v_datum),
+                "Schritte": v_schritte,
+                "Gewicht": v_gewicht,
+                "VO2max": v_vo2max,
+            }]
+        )
+        st.session_state.vitaldaten = pd.concat(
+            [st.session_state.vitaldaten, neuer_vital_eintrag],
+            ignore_index=True,
+        )
+        st.session_state.vital_form_aktiv = False
+        st.success("Gespeichert!")
+        st.rerun()
+      if vital_cancel:
+        st.session_state.vital_form_aktiv = False
+        st.rerun()
+
+    if st.session_state.vital_import_aktiv:
+      st.write("---")
+      st.caption(
+          "Exportiere deine Daten bei Garmin Connect (Einstellungen ›"
+          " Daten exportieren) oder bei Google Fit / Health Connect (über"
+          " Google Takeout) als CSV und lade die Datei hier hoch."
+      )
+      csv_upload = st.file_uploader(
+          "CSV-Datei auswählen", type=["csv"], key="vital_csv_upload"
+      )
+      if csv_upload is not None:
+        try:
+          import_df = pd.read_csv(csv_upload)
+          st.write("Vorschau:")
+          st.dataframe(import_df.head(), use_container_width=True)
+
+          spalten = import_df.columns.tolist()
+          keine_option = "– keine –"
+          datum_spalte = st.selectbox(
+              "Welche Spalte enthält das Datum?",
+              spalten,
+              key="csv_datum_spalte",
+          )
+          schritte_spalte = st.selectbox(
+              "Welche Spalte enthält die Schritte? (optional)",
+              [keine_option] + spalten,
+              key="csv_schritte_spalte",
+          )
+          gewicht_spalte = st.selectbox(
+              "Welche Spalte enthält das Gewicht in kg? (optional)",
+              [keine_option] + spalten,
+              key="csv_gewicht_spalte",
+          )
+          vo2max_spalte = st.selectbox(
+              "Welche Spalte enthält VO2max? (optional)",
+              [keine_option] + spalten,
+              key="csv_vo2max_spalte",
+          )
+
+          if st.button(
+              "Importieren", key="csv_import_btn", type="primary"
+          ):
+            neue_zeilen = pd.DataFrame()
+            neue_zeilen["Datum"] = pd.to_datetime(
+                import_df[datum_spalte], errors="coerce"
+            ).dt.strftime("%Y-%m-%d")
+            neue_zeilen["Schritte"] = (
+                pd.to_numeric(
+                    import_df[schritte_spalte], errors="coerce"
+                )
+                if schritte_spalte != keine_option
+                else None
+            )
+            neue_zeilen["Gewicht"] = (
+                pd.to_numeric(
+                    import_df[gewicht_spalte], errors="coerce"
+                )
+                if gewicht_spalte != keine_option
+                else None
+            )
+            neue_zeilen["VO2max"] = (
+                pd.to_numeric(
+                    import_df[vo2max_spalte], errors="coerce"
+                )
+                if vo2max_spalte != keine_option
+                else None
+            )
+            neue_zeilen = neue_zeilen.dropna(subset=["Datum"])
+            st.session_state.vitaldaten = pd.concat(
+                [st.session_state.vitaldaten, neue_zeilen],
+                ignore_index=True,
+            )
+            st.session_state.vital_import_aktiv = False
+            st.success(f"{len(neue_zeilen)} Zeilen importiert!")
+            st.rerun()
+        except Exception as e:
+          st.error(f"CSV konnte nicht gelesen werden: {e}")
+
+      if st.button("Abbrechen", key="vital_import_cancel_btn"):
+        st.session_state.vital_import_aktiv = False
+        st.rerun()
 
   st.write("### Bisherige Protokoll-Einträge")
   if not df.empty:
