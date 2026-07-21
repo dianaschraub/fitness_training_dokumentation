@@ -239,16 +239,18 @@ if "arsenal" not in st.session_state:
   st.session_state.arsenal = pd.DataFrame(
       [
           {
-              "Bereich / Übung": "Mobilisation & Dehnen",
               "Kategorie": "Bereich",
+              "Bereich / Übung": "Mobilisation & Dehnen",
               "Link": "https://example.com/mobilitaet",
               "Beschreibung": "Tägliche Routine für den Rücken",
+              "Bild": "",
           },
           {
-              "Bereich / Übung": "Kräftigung Rumpf",
               "Kategorie": "Übung",
+              "Bereich / Übung": "Kräftigung Rumpf",
               "Link": "https://example.com/ruecken",
               "Beschreibung": "Aufrechte Haltung, Bauchspannung halten",
+              "Bild": "",
           },
       ]
   )
@@ -338,6 +340,15 @@ if True:
       """
         <style>
         div.st-key-dashcard {
+            background-color: #e2efe3;
+            border: 1px solid #c8dbc9;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        /* Gleiche Kartenoptik wie beim Tagebuch, für das Übungsarsenal */
+        div.st-key-arsenalcard {
             background-color: #e2efe3;
             border: 1px solid #c8dbc9;
             border-radius: 14px;
@@ -807,27 +818,82 @@ if True:
   st.title("🏋️‍♀️ Übungsarsenal")
   st.write("Deine Sammlung von Links, Bereichen und Übungs-Hinweisen.")
 
-  st.dataframe(st.session_state.arsenal, use_container_width=True)
+  with st.container(key="arsenalcard"):
+    st.dataframe(
+        st.session_state.arsenal,
+        use_container_width=True,
+        column_config={
+            "Bild": st.column_config.ImageColumn(
+                "Bild", help="Screenshot / Foto zur Übung"
+            ),
+        },
+    )
 
-  st.write("---")
-  st.subheader("Neuen Link / Eintrag hinzufügen")
-  with st.form("arsenal_form"):
-    titel = st.text_input("Bereich oder Übung")
-    kategorie = st.selectbox("Kategorie", ["Bereich", "Übung"])
-    link = st.text_input("Link / URL")
-    beschreibung = st.text_area("Beschreibung / Notiz")
+    st.write("")
+    if "arsenal_form_aktiv" not in st.session_state:
+      st.session_state.arsenal_form_aktiv = False
 
-    arsenal_submitted = st.form_submit_button("Hinzufügen", type="primary")
-    if arsenal_submitted:
-      neuer_link = pd.DataFrame(
-          [{
-              "Bereich / Übung": titel,
-              "Kategorie": kategorie,
-              "Link": link,
-              "Beschreibung": beschreibung,
-          }]
+    if not st.session_state.arsenal_form_aktiv:
+      if st.button(
+          "＋ Neuen Link / Eintrag hinzufügen",
+          key="btn_open_arsenal_form",
+          type="primary",
+          use_container_width=True,
+      ):
+        st.session_state.arsenal_form_aktiv = True
+        st.rerun()
+    else:
+      st.subheader("Neuen Link / Eintrag hinzufügen")
+      kategorie = st.selectbox(
+          "Kategorie", ["Bereich", "Übung"], key="arsenal_kategorie"
       )
-      st.session_state.arsenal = pd.concat(
-          [st.session_state.arsenal, neuer_link], ignore_index=True
+      titel = st.text_input("Bereich oder Übung", key="arsenal_titel")
+      link = st.text_input("Link / URL", key="arsenal_link")
+      beschreibung = st.text_area(
+          "Beschreibung / Notiz", key="arsenal_beschreibung"
       )
-      st.success("Erfolgreich hinzugefügt!")
+      bild_upload = st.file_uploader(
+          "Screenshot / Bild zur Übung (optional)",
+          type=["png", "jpg", "jpeg"],
+          key="arsenal_bild",
+      )
+
+      col_a1, col_a2 = st.columns(2)
+      with col_a1:
+        arsenal_submitted = st.button(
+            "Hinzufügen",
+            key="arsenal_submit_btn",
+            type="primary",
+            use_container_width=True,
+        )
+      with col_a2:
+        arsenal_cancelled = st.button(
+            "Abbrechen",
+            key="arsenal_cancel_btn",
+            use_container_width=True,
+        )
+
+      if arsenal_submitted:
+        bild_data_uri = ""
+        if bild_upload is not None:
+          bild_b64 = base64.b64encode(bild_upload.getvalue()).decode("utf-8")
+          bild_data_uri = f"data:{bild_upload.type};base64,{bild_b64}"
+
+        neuer_link = pd.DataFrame(
+            [{
+                "Kategorie": kategorie,
+                "Bereich / Übung": titel,
+                "Link": link,
+                "Beschreibung": beschreibung,
+                "Bild": bild_data_uri,
+            }]
+        )
+        st.session_state.arsenal = pd.concat(
+            [st.session_state.arsenal, neuer_link], ignore_index=True
+        )
+        st.session_state.arsenal_form_aktiv = False
+        st.success("Erfolgreich hinzugefügt!")
+        st.rerun()
+      if arsenal_cancelled:
+        st.session_state.arsenal_form_aktiv = False
+        st.rerun()
