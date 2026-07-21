@@ -1196,26 +1196,46 @@ if True:
     if st.session_state.arsenal.empty:
       st.info("Noch keine Einträge im Übungsarsenal.")
     else:
-      for _, eintrag in st.session_state.arsenal.iterrows():
-        with st.container(border=True):
-          st.markdown(
-              f"<div style='display:flex; justify-content:space-between;"
-              f" align-items:center; flex-wrap:wrap; gap:6px;'>"
-              f"<span style='font-weight:700; font-size:16px;'>"
-              f"{eintrag.get('Bereich / Übung', '')}</span>"
-              f"<span style='background:#e2efe3; color:#2f5e45;"
-              f" padding:2px 10px; border-radius:12px; font-size:12px;"
-              f" font-weight:600; white-space:nowrap;'>"
-              f"{eintrag.get('Kategorie', '')} · {eintrag.get('Typ', '')}"
-              f"</span></div>",
-              unsafe_allow_html=True,
-          )
-          if eintrag.get("Beschreibung"):
-            st.write(eintrag["Beschreibung"])
-          if eintrag.get("Link"):
-            st.markdown(f"🔗 [{eintrag['Link']}]({eintrag['Link']})")
-          if eintrag.get("Bild"):
-            st.image(eintrag["Bild"], use_container_width=True)
+      arsenal_df = st.session_state.arsenal
+      for kat in ARSENAL_KATEGORIEN:
+        kat_eintraege = arsenal_df[arsenal_df["Kategorie"] == kat]
+        if kat_eintraege.empty:
+          continue
+        with st.expander(f"{kat} ({len(kat_eintraege)})"):
+          for _, eintrag in kat_eintraege.iterrows():
+            with st.container(border=True):
+              st.markdown(
+                  f"<div style='display:flex; justify-content:space-between;"
+                  f" align-items:center; flex-wrap:wrap; gap:6px;'>"
+                  f"<span style='font-weight:700; font-size:16px;'>"
+                  f"{eintrag.get('Bereich / Übung', '')}</span>"
+                  f"<span style='background:#e2efe3; color:#2f5e45;"
+                  f" padding:2px 10px; border-radius:12px; font-size:12px;"
+                  f" font-weight:600; white-space:nowrap;'>"
+                  f"{eintrag.get('Typ', '')}</span></div>",
+                  unsafe_allow_html=True,
+              )
+              if eintrag.get("Beschreibung"):
+                st.write(eintrag["Beschreibung"])
+              if eintrag.get("Link"):
+                st.markdown(f"🔗 [{eintrag['Link']}]({eintrag['Link']})")
+              if eintrag.get("Bild"):
+                st.image(eintrag["Bild"], use_container_width=True)
+
+      # Falls Einträge eine Kategorie außerhalb der Standardliste haben
+      # (z.B. durch ältere Daten), trotzdem anzeigen statt zu verschlucken
+      sonstige = arsenal_df[~arsenal_df["Kategorie"].isin(ARSENAL_KATEGORIEN)]
+      if not sonstige.empty:
+        with st.expander(f"Sonstige ({len(sonstige)})"):
+          for _, eintrag in sonstige.iterrows():
+            with st.container(border=True):
+              st.markdown(f"**{eintrag.get('Bereich / Übung', '')}**")
+              if eintrag.get("Beschreibung"):
+                st.write(eintrag["Beschreibung"])
+              if eintrag.get("Link"):
+                st.markdown(f"🔗 [{eintrag['Link']}]({eintrag['Link']})")
+              if eintrag.get("Bild"):
+                st.image(eintrag["Bild"], use_container_width=True)
 
     st.write("")
     if "arsenal_form_aktiv" not in st.session_state:
