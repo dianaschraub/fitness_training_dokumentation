@@ -115,6 +115,55 @@ def render_icon_box(
       unsafe_allow_html=True,
   )
 
+
+@st.dialog("Sonstiges – bitte kurz beschreiben")
+def sonstiges_dialog(state_key):
+  """Öffnet ein modales Fenster, in dem man frei Text eintragen kann,
+  wenn bei einer Kategorie die Unterkategorie 'Sonstiges' gewählt wurde."""
+  text_val = st.text_area(
+      "Was genau hast du gemacht?",
+      value=st.session_state.get(state_key, ""),
+      key=f"{state_key}_input",
+  )
+  col_d1, col_d2 = st.columns(2)
+  with col_d1:
+    if st.button(
+        "Übernehmen", key=f"{state_key}_ok", type="primary",
+        use_container_width=True,
+    ):
+      st.session_state[state_key] = text_val.strip()
+      st.session_state[f"{state_key}_done"] = True
+      st.rerun()
+  with col_d2:
+    if st.button(
+        "Abbrechen", key=f"{state_key}_cancel", use_container_width=True
+    ):
+      st.session_state[f"{state_key}_done"] = True
+      st.rerun()
+
+
+def handle_sonstiges_unterkategorie(selected_unterkat, cat_key):
+  """Wenn 'Sonstiges' gewählt ist, öffnet dies (einmalig, bis wieder
+  gewechselt wird) das Dialog-Fenster zur Texteingabe und liefert den
+  eingegebenen Freitext als tatsächliche Unterkategorie zurück."""
+  state_key = f"sonstiges_text_{cat_key}"
+  done_key = f"{state_key}_done"
+
+  if selected_unterkat != "Sonstiges":
+    st.session_state[done_key] = False
+    return selected_unterkat
+
+  if not st.session_state.get(done_key, False):
+    sonstiges_dialog(state_key)
+
+  freitext = st.session_state.get(state_key, "").strip()
+  if freitext:
+    st.caption(f"📝 Sonstiges: {freitext}")
+  else:
+    st.caption("📝 Sonstiges (noch keine Beschreibung eingetragen)")
+  return freitext if freitext else "Sonstiges"
+
+
 # Initialisierung des Session State für Daten
 if "protokoll" not in st.session_state:
   st.session_state.protokoll = pd.DataFrame(
@@ -134,6 +183,38 @@ SELBSTMANAGEMENT_UNTERKATEGORIEN = [
     "Entspannung",
     "Koordination",
     "Gleichgewichtstraining",
+]
+
+# Unterkategorien, die nur bei "Ausdauer" zur Auswahl stehen
+AUSDAUER_UNTERKATEGORIEN = [
+    "Joggen",
+    "Nordic Walking",
+    "Walking",
+    "Wandern",
+    "Radfahren",
+    "Schwimmen",
+    "Treppensteigen",
+    "Sonstiges",
+]
+
+# Unterkategorien, die nur bei "Beweglichkeit" zur Auswahl stehen
+BEWEGLICHKEIT_UNTERKATEGORIEN = [
+    "Yoga",
+    "Ausgleichsübungen",
+    "Faszientraining",
+    "Rückenfit",
+    "Massage",
+    "Sonstiges",
+]
+
+# Unterkategorien, die nur bei "Kraft" zur Auswahl stehen
+KRAFT_UNTERKATEGORIEN = [
+    "Pilates",
+    "Rückenfit",
+    "Stabilisierungstraining",
+    "Therabandtraining",
+    "Hanteltraining",
+    "Sonstiges",
 ]
 
 # Tageszeiten, die nur bei "Ernährung" zur Auswahl stehen
@@ -296,6 +377,28 @@ if menu == "Startseite & Tagebuch":
             border-color: #3f7a5c !important;
             color: #2f5e45 !important;
         }
+
+        /* Spalten (st.columns) sollen auf dem Handy NICHT untereinander
+           stehen, sondern genauso nebeneinander bleiben wie am Desktop.
+           Streamlit stapelt Spalten normalerweise unter ~640px Breite -
+           das erzwingen wir hier zurück auf eine Reihe. */
+        div[data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            flex-direction: row !important;
+            gap: 6px !important;
+        }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            min-width: 0 !important;
+            width: auto !important;
+        }
+
+        /* Auf sehr schmalen Screens Schrift/Abstände in den 6er-Reihen
+           etwas verkleinern, damit alles bequem nebeneinander passt. */
+        @media (max-width: 480px) {
+            div.st-key-dashcard {
+                padding: 10px;
+            }
+        }
         </style>
         """,
       unsafe_allow_html=True,
@@ -453,11 +556,50 @@ if menu == "Startseite & Tagebuch":
     status_wert = "Aktiv"
     minuten = 0
 
-    if selected_cat == "Selbstmanagement":
+    if selected_cat == "Ausdauer":
+      selected_unterkat = st.selectbox(
+          "Unterkategorie",
+          AUSDAUER_UNTERKATEGORIEN,
+          key="entry_unterkategorie_ausdauer",
+      )
+      selected_unterkat = handle_sonstiges_unterkategorie(
+          selected_unterkat, "ausdauer"
+      )
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=30, key="entry_minuten"
+      )
+
+    elif selected_cat == "Selbstmanagement":
       selected_unterkat = st.selectbox(
           "Unterkategorie",
           SELBSTMANAGEMENT_UNTERKATEGORIEN,
           key="entry_unterkategorie",
+      )
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=30, key="entry_minuten"
+      )
+
+    elif selected_cat == "Beweglichkeit":
+      selected_unterkat = st.selectbox(
+          "Unterkategorie",
+          BEWEGLICHKEIT_UNTERKATEGORIEN,
+          key="entry_unterkategorie_beweglichkeit",
+      )
+      selected_unterkat = handle_sonstiges_unterkategorie(
+          selected_unterkat, "beweglichkeit"
+      )
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=30, key="entry_minuten"
+      )
+
+    elif selected_cat == "Kraft":
+      selected_unterkat = st.selectbox(
+          "Unterkategorie",
+          KRAFT_UNTERKATEGORIEN,
+          key="entry_unterkategorie_kraft",
+      )
+      selected_unterkat = handle_sonstiges_unterkategorie(
+          selected_unterkat, "kraft"
       )
       minuten = st.number_input(
           "Minuten", min_value=0, max_value=300, value=30, key="entry_minuten"
