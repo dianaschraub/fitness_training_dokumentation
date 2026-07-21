@@ -103,17 +103,18 @@ def render_icon_box(
   damit alle 6 Boxen garantiert gleich groß sind."""
   ring_svg = render_progress_ring_svg(minutes, goal, size=ring_size)
   st.markdown(
-      f"<div style='text-align: center; background: white; padding: 6px;"
-      f" border-radius: 8px; border: 1px solid #d0edd2; width: 100%;"
-      f" height: {box_height}px; box-sizing: border-box; display: flex;"
-      f" flex-direction: column; align-items: center; justify-content:"
-      f" center; gap: 4px;'>"
-      f"<span style='font-size: {icon_font_size}px; line-height: 1;'>"
-      f"{icon_html}</span>"
+      f"<div class='icon-box' style='text-align: center; background: white;"
+      f" padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;"
+      f" width: 100%; height: {box_height}px; box-sizing: border-box;"
+      f" display: flex; flex-direction: column; align-items: center;"
+      f" justify-content: center; gap: 4px; overflow: hidden;'>"
+      f"<span class='icon-box-symbol' style='font-size: {icon_font_size}px;"
+      f" line-height: 1;'>{icon_html}</span>"
       f"{ring_svg}"
       f"</div>",
       unsafe_allow_html=True,
   )
+
 
 
 @st.dialog("Sonstiges – bitte kurz beschreiben")
@@ -255,16 +256,10 @@ if "arsenal" not in st.session_state:
 if "wochen_ansicht_aktiv" not in st.session_state:
   st.session_state.wochen_ansicht_aktiv = False
 
-# Navigation via Sidebar
-menu = st.sidebar.selectbox(
-    "Navigation",
-    ["Startseite & Tagebuch", "Übungsarsenal"],
-)
-
 # ----------------------------------------------------
 # 1. STARTSEITE & TAGEBUCH
 # ----------------------------------------------------
-if menu == "Startseite & Tagebuch":
+if True:
   st.title("Tagebuch")
   st.markdown("##### Aktivitätentagebuch Prävention")
   st.write("---")
@@ -381,22 +376,38 @@ if menu == "Startseite & Tagebuch":
         /* Spalten (st.columns) sollen auf dem Handy NICHT untereinander
            stehen, sondern genauso nebeneinander bleiben wie am Desktop.
            Streamlit stapelt Spalten normalerweise unter ~640px Breite -
-           das erzwingen wir hier zurück auf eine Reihe. */
+           das erzwingen wir hier zurück auf eine Reihe. Wichtig: die
+           prozentuale Breite (flex-basis) von Streamlit NICHT anfassen,
+           sonst richten sich die Boxen nach ihrem Inhalt statt nach der
+           Bildschirmbreite und werden zu breit. */
         div[data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap !important;
             flex-direction: row !important;
-            gap: 6px !important;
+            gap: 4px !important;
         }
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
             min-width: 0 !important;
-            width: auto !important;
         }
 
-        /* Auf sehr schmalen Screens Schrift/Abstände in den 6er-Reihen
-           etwas verkleinern, damit alles bequem nebeneinander passt. */
+        /* Auf schmalen Handy-Screens (z.B. Poco F5, ~390-400px breit):
+           Kästchen-Innenabstand, Ring-Icon und Schrift verkleinern, damit
+           alle 6 Boxen pro Reihe bequem nebeneinander passen. */
         @media (max-width: 480px) {
             div.st-key-dashcard {
-                padding: 10px;
+                padding: 8px;
+            }
+            div.st-key-dashcard [data-testid="stHorizontalBlock"] {
+                gap: 3px !important;
+            }
+            .icon-box {
+                padding: 3px !important;
+            }
+            .icon-box svg {
+                width: 30px !important;
+                height: 30px !important;
+            }
+            .icon-box .icon-box-symbol {
+                font-size: 15px !important;
             }
         }
 
@@ -789,9 +800,10 @@ if menu == "Startseite & Tagebuch":
     st.info("Noch keine Einträge vorhanden.")
 
 # ----------------------------------------------------
-# 2. ÜBUNGSARSENAL
+# 2. ÜBUNGSARSENAL (direkt unter dem Tagebuch, keine eigene Seite mehr)
 # ----------------------------------------------------
-elif menu == "Übungsarsenal":
+if True:
+  st.write("---")
   st.title("🏋️‍♀️ Übungsarsenal")
   st.write("Deine Sammlung von Links, Bereichen und Übungs-Hinweisen.")
 
