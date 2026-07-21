@@ -1,3 +1,4 @@
+import base64
 import datetime
 import pandas as pd
 import streamlit as st
@@ -6,6 +7,48 @@ import streamlit as st
 st.set_page_config(
     page_title="Sport-Tagebuch", page_icon="🏃‍♀️", layout="centered"
 )
+
+# --- Eigenes Icon für "Beweglichkeit" (Original-Bild des Nutzers) ---
+BEWEGLICHKEIT_ICON_B64 = (
+    "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"
+)
+
+
+def beweglichkeit_icon_html(size_px):
+  """Gibt das eigene Beweglichkeit-Icon (Originalbild) als img-Tag zurück."""
+  return (
+      f"<img src='data:image/png;base64,{BEWEGLICHKEIT_ICON_B64}' "
+      f"style='height:{size_px}px; width:{size_px}px; object-fit:contain; "
+      f"vertical-align:middle;' />"
+  )
 
 # Initialisierung des Session State für Daten
 if "protokoll" not in st.session_state:
@@ -231,9 +274,9 @@ if menu == "Startseite & Tagebuch":
       )
     with mini_col3:
       st.markdown(
-          f"<div style='text-align: center; font-size: 20px; background: white;"
+          f"<div style='text-align: center; background: white;"
           f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>🚶‍♂️<br><span"
+          f" #d0edd2;'>{beweglichkeit_icon_html(24)}<br><span"
           f" style='font-size:"
           f" 16px;'>{get_cat_symbol('Beweglichkeit')}</span></div>",
           unsafe_allow_html=True,
@@ -292,9 +335,9 @@ if menu == "Startseite & Tagebuch":
       )
     with t_col3:
       st.markdown(
-          f"<div style='text-align: center; font-size: 18px; background: white;"
+          f"<div style='text-align: center; background: white;"
           f" padding: 6px; border-radius: 8px; border: 1px solid"
-          f" #d0edd2;'>🚶‍♂️<br><span"
+          f" #d0edd2;'>{beweglichkeit_icon_html(20)}<br><span"
           f" style='font-size:"
           f" 15px;'>{get_today_symbol('Beweglichkeit')}</span></div>",
           unsafe_allow_html=True,
@@ -413,7 +456,10 @@ if menu == "Startseite & Tagebuch":
 
     kategorien_paare = [
         (("🏃‍♂️ Ausdauer", "Ausdauer"), ("🏋️‍♂️ Kraft", "Kraft")),
-        (("🚶‍♂️ Beweglichkeit", "Beweglichkeit"), ("📋 Selbstmanagement", "Selbstmanagement")),
+        (
+            (f"{beweglichkeit_icon_html(16)} Beweglichkeit", "Beweglichkeit"),
+            ("📋 Selbstmanagement", "Selbstmanagement"),
+        ),
         (("🍽️ Ernährung", "Ernährung"), ("😊 Gesamtbefinden", "Gesamtbefinden")),
     ]
 
