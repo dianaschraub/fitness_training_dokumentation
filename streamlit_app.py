@@ -1,4 +1,3 @@
-
 import datetime
 import pandas as pd
 import streamlit as st
@@ -126,16 +125,16 @@ if menu == "Startseite & Tagebuch":
       return "🔴"
 
 
-  # --- GESAMTER GRÜNER CONTAINER (Woche bis Button) ---
+  # --- GROSSER GRÜNER CONTAINER (umfasst alles inklusive Überstand unten) ---
   st.markdown(
       """
         <style>
         .custom-green-box {
             background-color: #e2efe3;
             border: 1px solid #c8dbc9;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 25px;
         }
         .stButton button[kind="primary"] {
             background-color: #0077b6 !important;
@@ -260,15 +259,20 @@ if menu == "Startseite & Tagebuch":
 
   st.write("")
 
-  # BLauer Button "Eintrag erstellen" innerhalb des grünen Containers
+  # Blauer Button "Eintrag erstellen" innerhalb des großen Containers
   if st.button("➕ Eintrag erstellen", use_container_width=True, type="primary"):
     st.session_state.eintrag_modal_aktiv = True
     st.rerun()
 
-  # Ende des grünen Containers
+  # Kleiner optischer Abstand nach unten innerhalb des Containers
+  st.markdown(
+      "<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True
+  )
+
+  # Ende des großen grünen Containers
   st.markdown("</div>", unsafe_allow_html=True)
 
-  # Formular für Eintrag
+  # Formular für Eintrag (öffnet sich außerhalb, wenn Button geklickt)
   if st.session_state.get("eintrag_modal_aktiv", False):
     st.write("### 📝 Neuen Eintrag erfassen")
     with st.form(key="kategorie_form"):
