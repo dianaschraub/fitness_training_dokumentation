@@ -118,8 +118,23 @@ def render_icon_box(
 # Initialisierung des Session State für Daten
 if "protokoll" not in st.session_state:
   st.session_state.protokoll = pd.DataFrame(
-      columns=["Datum", "Kategorie", "Minuten", "Status", "Notizen"]
+      columns=[
+          "Datum",
+          "Kategorie",
+          "Unterkategorie",
+          "Minuten",
+          "Status",
+          "Notizen",
+      ]
   )
+
+# Unterkategorien, die nur bei "Selbstmanagement" zur Auswahl stehen
+SELBSTMANAGEMENT_UNTERKATEGORIEN = [
+    "Meditation",
+    "Entspannung",
+    "Koordination",
+    "Gleichgewichtstraining",
+]
 
 if "arsenal" not in st.session_state:
   st.session_state.arsenal = pd.DataFrame(
@@ -401,49 +416,69 @@ if menu == "Startseite & Tagebuch":
   # Formular für Eintrag (außerhalb des Kastens)
   if st.session_state.get("eintrag_modal_aktiv", False):
     st.write("### 📝 Neuen Eintrag erfassen")
-    with st.form(key="kategorie_form"):
-      selected_cat = st.selectbox(
-          "Kategorie wählen",
-          [
-              "Ausdauer",
-              "Kraft",
-              "Beweglichkeit",
-              "Selbstmanagement",
-              "Ernährung",
-              "Gesamtbefinden",
-          ],
-      )
-      datum = st.date_input("Datum", value=heute)
-      minuten = st.number_input(
-          "Minuten", min_value=0, max_value=300, value=30
-      )
-      notizen = st.text_input("Notizen / Details")
+    # Kein st.form() hier: Felder innerhalb eines Formulars lösen erst
+    # beim Absenden einen Rerun aus, daher würde die Unterkategorie nicht
+    # sofort erscheinen. Stattdessen normale Widgets + eigene Buttons.
+    selected_cat = st.selectbox(
+        "Kategorie wählen",
+        [
+            "Ausdauer",
+            "Kraft",
+            "Beweglichkeit",
+            "Selbstmanagement",
+            "Ernährung",
+            "Gesamtbefinden",
+        ],
+        key="entry_kategorie",
+    )
 
-      col_s1, col_s2 = st.columns(2)
-      with col_s1:
-        save_btn = st.form_submit_button("Speichern", type="primary")
-      with col_s2:
-        cancel_btn = st.form_submit_button("Abbrechen")
+    selected_unterkat = ""
+    if selected_cat == "Selbstmanagement":
+      selected_unterkat = st.selectbox(
+          "Unterkategorie",
+          SELBSTMANAGEMENT_UNTERKATEGORIEN,
+          key="entry_unterkategorie",
+      )
 
-      if save_btn:
-        neuer_eintrag = pd.DataFrame(
-            [{
-                "Datum": str(datum),
-                "Kategorie": selected_cat,
-                "Minuten": minuten,
-                "Status": "Aktiv",
-                "Notizen": notizen,
-            }]
-        )
-        st.session_state.protokoll = pd.concat(
-            [st.session_state.protokoll, neuer_eintrag], ignore_index=True
-        )
-        st.session_state.eintrag_modal_aktiv = False
-        st.success("Eintrag erfolgreich gespeichert!")
-        st.rerun()
-      if cancel_btn:
-        st.session_state.eintrag_modal_aktiv = False
-        st.rerun()
+    datum = st.date_input("Datum", value=heute, key="entry_datum")
+    minuten = st.number_input(
+        "Minuten", min_value=0, max_value=300, value=30, key="entry_minuten"
+    )
+    notizen = st.text_input("Notizen / Details", key="entry_notizen")
+
+    col_s1, col_s2 = st.columns(2)
+    with col_s1:
+      save_btn = st.button(
+          "Speichern",
+          key="save_entry_btn",
+          type="primary",
+          use_container_width=True,
+      )
+    with col_s2:
+      cancel_btn = st.button(
+          "Abbrechen", key="cancel_entry_btn", use_container_width=True
+      )
+
+    if save_btn:
+      neuer_eintrag = pd.DataFrame(
+          [{
+              "Datum": str(datum),
+              "Kategorie": selected_cat,
+              "Unterkategorie": selected_unterkat,
+              "Minuten": minuten,
+              "Status": "Aktiv",
+              "Notizen": notizen,
+          }]
+      )
+      st.session_state.protokoll = pd.concat(
+          [st.session_state.protokoll, neuer_eintrag], ignore_index=True
+      )
+      st.session_state.eintrag_modal_aktiv = False
+      st.success("Eintrag erfolgreich gespeichert!")
+      st.rerun()
+    if cancel_btn:
+      st.session_state.eintrag_modal_aktiv = False
+      st.rerun()
     st.write("---")
 
   # WOCHEN-ANSICHT (3x2 Raster wenn aktiviert)
