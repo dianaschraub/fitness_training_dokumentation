@@ -140,15 +140,33 @@ if menu == "Startseite & Tagebuch":
             padding: 20px;
             margin-bottom: 25px;
         }
-        div.stButton > button:first-child {
-            background-color: #0077b6 !important;
+
+        /* Primärer Aktions-Button (z.B. "Eintrag erstellen", "Speichern") -
+           gefülltes, gedecktes Waldgrün, harmoniert mit der grünen Karte */
+        div.stButton button[kind="primary"] {
+            background-color: #3f7a5c !important;
             color: white !important;
             border-radius: 8px !important;
-            font-weight: bold !important;
+            font-weight: 600 !important;
             border: none !important;
         }
-        div.stButton > button:first-child:hover {
-            background-color: #023e8a !important;
+        div.stButton button[kind="primary"]:hover {
+            background-color: #2f5e45 !important;
+        }
+
+        /* Sekundäre Buttons (Navigation ⬅️➡️, Wochen-Titel, Abbrechen) -
+           dezent, outline, fügt sich ruhig in die grüne Karte ein */
+        div.stButton button[kind="secondary"] {
+            background-color: #ffffff !important;
+            color: #2f5e45 !important;
+            border: 1px solid #a9c9b3 !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+        }
+        div.stButton button[kind="secondary"]:hover {
+            background-color: #eef6f0 !important;
+            border-color: #3f7a5c !important;
+            color: #2f5e45 !important;
         }
         </style>
         """,
@@ -313,7 +331,10 @@ if menu == "Startseite & Tagebuch":
     # Blauer Button "Eintrag erstellen" - jetzt garantiert INNERHALB
     # des grünen Kastens, da er im selben st.container(key="dashcard") steht.
     if st.button(
-        "➕ Eintrag erstellen", key="btn_create", use_container_width=True
+        "➕ Eintrag erstellen",
+        key="btn_create",
+        use_container_width=True,
+        type="primary",
     ):
       st.session_state.eintrag_modal_aktiv = True
       st.rerun()
@@ -341,7 +362,7 @@ if menu == "Startseite & Tagebuch":
 
       col_s1, col_s2 = st.columns(2)
       with col_s1:
-        save_btn = st.form_submit_button("Speichern")
+        save_btn = st.form_submit_button("Speichern", type="primary")
       with col_s2:
         cancel_btn = st.form_submit_button("Abbrechen")
 
@@ -485,7 +506,7 @@ elif menu == "Übungsarsenal":
     link = st.text_input("Link / URL")
     beschreibung = st.text_area("Beschreibung / Notiz")
 
-    arsenal_submitted = st.form_submit_button("Hinzufügen")
+    arsenal_submitted = st.form_submit_button("Hinzufügen", type="primary")
     if arsenal_submitted:
       neuer_link = pd.DataFrame(
           [{
