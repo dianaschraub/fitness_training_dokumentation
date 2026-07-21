@@ -125,15 +125,15 @@ if menu == "Startseite & Tagebuch":
       return "🔴"
 
 
-  # --- PERFEKT ANGEPASSTER GRÜNER CONTAINER ---
+  # Wir nutzen Streamlits native Container-Funktion mit individuellem CSS für den perfekten Hintergrund
   st.markdown(
       """
         <style>
-        .custom-green-box {
+        div.stContainer {
             background-color: #e2efe3;
             border: 1px solid #c8dbc9;
             border-radius: 14px;
-            padding: 24px;
+            padding: 20px;
             margin-bottom: 25px;
         }
         .stButton button[kind="primary"] {
@@ -147,127 +147,170 @@ if menu == "Startseite & Tagebuch":
             background-color: #023e8a !important;
         }
         </style>
-        <div class="custom-green-box">
         """,
       unsafe_allow_html=True,
   )
 
-  # Wochen-Kopfzeile
-  col_w1, col_w2, col_w3 = st.columns([1, 4, 1])
-  with col_w1:
-    if st.button("⬅️", use_container_width=True):
-      st.session_state.wochen_ansicht_aktiv = (
-          not st.session_state.wochen_ansicht_aktiv
+  # Der Container umschließt nun exakt alles von der Woche bis zum blauen Button
+  with st.container():
+    col_w1, col_w2, col_w3 = st.columns([1, 4, 1])
+    with col_w1:
+      if st.button("⬅️", use_container_width=True):
+        st.session_state.wochen_ansicht_aktiv = (
+            not st.session_state.wochen_ansicht_aktiv
+        )
+        st.rerun()
+    with col_w2:
+      wochen_titel_text = (
+          f"Woche {kalenderwoche} (Details ausblenden)"
+          if st.session_state.wochen_ansicht_aktiv
+          else f"Woche {kalenderwoche} (Details anzeigen)"
       )
-      st.rerun()
-  with col_w2:
-    wochen_titel_text = (
-        f"Woche {kalenderwoche} (Details ausblenden)"
-        if st.session_state.wochen_ansicht_aktiv
-        else f"Woche {kalenderwoche} (Details anzeigen)"
-    )
-    if st.button(wochen_titel_text, use_container_width=True):
-      st.session_state.wochen_ansicht_aktiv = (
-          not st.session_state.wochen_ansicht_aktiv
+      if st.button(wochen_titel_text, use_container_width=True):
+        st.session_state.wochen_ansicht_aktiv = (
+            not st.session_state.wochen_ansicht_aktiv
+        )
+        st.rerun()
+      st.markdown(
+          f"<p style='text-align: center; color: #555; margin: 0;'>{datum_string}</p>",
+          unsafe_allow_html=True,
       )
-      st.rerun()
+    with col_w3:
+      if st.button("➡️", use_container_width=True):
+        st.session_state.wochen_ansicht_aktiv = (
+            not st.session_state.wochen_ansicht_aktiv
+        )
+        st.rerun()
+
+    # BEREICH: WOCHE
     st.markdown(
-        f"<p style='text-align: center; color: #555; margin: 0;'>{datum_string}</p>",
+        "<p style='font-weight: bold; margin-top: 15px;'>Woche</p>",
         unsafe_allow_html=True,
     )
-  with col_w3:
-    if st.button("➡️", use_container_width=True):
-      st.session_state.wochen_ansicht_aktiv = (
-          not st.session_state.wochen_ansicht_aktiv
+    mini_col1, mini_col2, mini_col3, mini_col4, mini_col5, mini_col6 = (
+        st.columns(6)
+    )
+    with mini_col1:
+      st.markdown(
+          f"<div style='text-align: center; font-size: 20px; background: white;"
+          f" padding: 6px; border-radius: 8px; border: 1px solid"
+          f" #d0edd2;'>🏃‍♂️<br><span"
+          f" style='font-size: 16px;'>{get_cat_symbol('Ausdauer')}</span></div>",
+          unsafe_allow_html=True,
       )
+    with mini_col2:
+      st.markdown(
+          f"<div style='text-align: center; font-size: 20px; background: white;"
+          f" padding: 6px; border-radius: 8px; border: 1px solid"
+          f" #d0edd2;'>🏋️‍♂️<br><span"
+          f" style='font-size: 16px;'>{get_cat_symbol('Kraft')}</span></div>",
+          unsafe_allow_html=True,
+      )
+    with mini_col3:
+      st.markdown(
+          f"<div style='text-align: center; font-size: 20px; background: white;"
+          f" padding: 6px; border-radius: 8px; border: 1px solid"
+          f" #d0edd2;'>🚶‍♂️<br><span"
+          f" style='font-size:"
+          f" 16px;'>{get_cat_symbol('Beweglichkeit')}</span></div>",
+          unsafe_allow_html=True,
+      )
+    with mini_col4:
+      st.markdown(
+          f"<div style='text-align: center; font-size: 20px; background: white;"
+          f" padding: 6px; border-radius: 8px; border: 1px solid"
+          f" #d0edd2;'>📋<br><span"
+          f" style='font-size:"
+          f" 16px;'>{get_cat_symbol('Selbstmanagement')}</span></div>",
+          unsafe_allow_html=True,
+      )
+    with mini_col5:
+      st.markdown(
+          f"<div style='text-align: center; font-size: 20px; background: white;"
+          f" padding: 6px; border-radius: 8px; border: 1px solid"
+          f" #d0edd2;'>🍽️<br><span"
+          f" style='font-size: 16px;'>{get_cat_symbol('Ernährung')}</span></div>",
+          unsafe_allow_html=True,
+      )
+    with mini_col6:
+      st.markdown(
+          f"<div style='text-align: center; font-size: 20px; background: white;"
+          f" padding: 6px; border-radius: 8px; border: 1px solid"
+          f" #d0edd2;'>😊<br><span"
+          f" style='font-size:"
+          f" 16px;'>{get_cat_symbol('Gesamtbefinden')}</span></div>",
+          unsafe_allow_html=True,
+      )
+
+    st.write("")
+
+    # BEREICH: HEUTE
+    st.markdown(
+        f"<p style='font-weight: bold;'>Heute <span style='font-size: 13px;"
+        f" color: #555; float: right;'>{heute_string}</span></p>",
+        unsafe_allow_html=True,
+    )
+    t_col1, t_col2, t_col3, t_col4, t_col5, t_col6 = st.columns(6)
+    with t_col1:
+      st.markdown(
+          f"<div style='text-align: center; font-size: 18px; background: white;"
+          f" padding: 6px; border-radius: 8px; border: 1px solid"
+          f" #d0edd2;'>🏃‍♂️<br><span"
+          f" style='font-size: 15px;'>{get_today_symbol('Ausdauer')}</span></div>",
+          unsafe_allow_html=True,
+      )
+    with t_col2:
+      st.markdown(
+          f"<div style='text-align: center; font-size: 18px; background: white;"
+          f" padding: 6px; border-radius: 8px; border: 1px solid"
+          f" #d0edd2;'>🏋️‍♂️<br><span"
+          f" style='font-size: 15px;'>{get_today_symbol('Kraft')}</span></div>",
+          unsafe_allow_html=True,
+      )
+    with t_col3:
+      st.markdown(
+          f"<div style='text-align: center; font-size: 18px; background: white;"
+          f" padding: 6px; border-radius: 8px; border: 1px solid"
+          f" #d0edd2;'>🚶‍♂️<br><span"
+          f" style='font-size:"
+          f" 15px;'>{get_today_symbol('Beweglichkeit')}</span></div>",
+          unsafe_allow_html=True,
+      )
+    with t_col4:
+      st.markdown(
+          f"<div style='text-align: center; font-size: 18px; background: white;"
+          f" padding: 6px; border-radius: 8px; border: 1px solid"
+          f" #d0edd2;'>📋<br><span"
+          f" style='font-size:"
+          f" 15px;'>{get_today_symbol('Selbstmanagement')}</span></div>",
+          unsafe_allow_html=True,
+      )
+    with t_col5:
+      st.markdown(
+          f"<div style='text-align: center; font-size: 18px; background: white;"
+          f" padding: 6px; border-radius: 8px; border: 1px solid"
+          f" #d0edd2;'>🍽️<br><span"
+          f" style='font-size: 15px;'>{get_today_symbol('Ernährung')}</span></div>",
+          unsafe_allow_html=True,
+      )
+    with t_col6:
+      st.markdown(
+          f"<div style='text-align: center; font-size: 18px; background: white;"
+          f" padding: 6px; border-radius: 8px; border: 1px solid"
+          f" #d0edd2;'>😊<br><span"
+          f" style='font-size:"
+          f" 15px;'>{get_today_symbol('Gesamtbefinden')}</span></div>",
+          unsafe_allow_html=True,
+      )
+
+    st.write("")
+
+    # Blauer Button "Eintrag erstellen"
+    if st.button("➕ Eintrag erstellen", use_container_width=True, type="primary"):
+      st.session_state.eintrag_modal_aktiv = True
       st.rerun()
 
-  # BEREICH: WOCHE
-  st.markdown("<p style='font-weight: bold; margin-top: 15px;'>Woche</p>", unsafe_allow_html=True)
-  mini_col1, mini_col2, mini_col3, mini_col4, mini_col5, mini_col6 = (
-      st.columns(6)
-  )
-  with mini_col1:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 20px; background: white; padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;'>🏃‍♂️<br><span style='font-size: 16px;'>{get_cat_symbol('Ausdauer')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with mini_col2:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 20px; background: white; padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;'>🏋️‍♂️<br><span style='font-size: 16px;'>{get_cat_symbol('Kraft')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with mini_col3:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 20px; background: white; padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;'>🚶‍♂️<br><span style='font-size: 16px;'>{get_cat_symbol('Beweglichkeit')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with mini_col4:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 20px; background: white; padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;'>📋<br><span style='font-size: 16px;'>{get_cat_symbol('Selbstmanagement')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with mini_col5:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 20px; background: white; padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;'>🍽️<br><span style='font-size: 16px;'>{get_cat_symbol('Ernährung')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with mini_col6:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 20px; background: white; padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;'>😊<br><span style='font-size: 16px;'>{get_cat_symbol('Gesamtbefinden')}</span></div>",
-        unsafe_allow_html=True,
-    )
-
-  st.write("")
-
-  # BEREICH: HEUTE
-  st.markdown(
-      f"<p style='font-weight: bold;'>Heute <span style='font-size: 13px; color: #555; float: right;'>{heute_string}</span></p>",
-      unsafe_allow_html=True,
-  )
-  t_col1, t_col2, t_col3, t_col4, t_col5, t_col6 = st.columns(6)
-  with t_col1:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 18px; background: white; padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;'>🏃‍♂️<br><span style='font-size: 15px;'>{get_today_symbol('Ausdauer')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with t_col2:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 18px; background: white; padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;'>🏋️‍♂️<br><span style='font-size: 15px;'>{get_today_symbol('Kraft')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with t_col3:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 18px; background: white; padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;'>🚶‍♂️<br><span style='font-size: 15px;'>{get_today_symbol('Beweglichkeit')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with t_col4:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 18px; background: white; padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;'>📋<br><span style='font-size: 15px;'>{get_today_symbol('Selbstmanagement')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with t_col5:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 18px; background: white; padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;'>🍽️<br><span style='font-size: 15px;'>{get_today_symbol('Ernährung')}</span></div>",
-        unsafe_allow_html=True,
-    )
-  with t_col6:
-    st.markdown(
-        f"<div style='text-align: center; font-size: 18px; background: white; padding: 6px; border-radius: 8px; border: 1px solid #d0edd2;'>😊<br><span style='font-size: 15px;'>{get_today_symbol('Gesamtbefinden')}</span></div>",
-        unsafe_allow_html=True,
-    )
-
-  st.write("")
-
-  # Blauer Button "Eintrag erstellen" (jetzt als letztes Element INNERHALB des Containers)
-  if st.button("➕ Eintrag erstellen", use_container_width=True, type="primary"):
-    st.session_state.eintrag_modal_aktiv = True
-    st.rerun()
-
-  # Ende des großen grünen Containers (schließt direkt unter dem blauen Button ab)
-  st.markdown("</div>", unsafe_allow_html=True)
-
-  # Formular für Eintrag (öffnet sich außerhalb, wenn Button geklickt wurde)
+  # Formular für Eintrag (öffnet sich außerhalb desContainers)
   if st.session_state.get("eintrag_modal_aktiv", False):
     st.write("### 📝 Neuen Eintrag erfassen")
     with st.form(key="kategorie_form"):
@@ -310,7 +353,7 @@ if menu == "Startseite & Tagebuch":
         st.session_state.eintrag_modal_aktiv = False
         st.success("Eintrag erfolgreich gespeichert!")
         st.rerun()
-      if cancel_btn:
+      if cancel_df := cancel_btn:
         st.session_state.eintrag_modal_aktiv = False
         st.rerun()
     st.write("---")
