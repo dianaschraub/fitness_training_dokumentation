@@ -136,6 +136,23 @@ SELBSTMANAGEMENT_UNTERKATEGORIEN = [
     "Gleichgewichtstraining",
 ]
 
+# Tageszeiten, die nur bei "Ernährung" zur Auswahl stehen
+ERNAEHRUNG_TAGESZEITEN = ["Morgens", "Mittags", "Abends"]
+
+# Ampel-Status für Ernährung: (Anzeige-Label, gespeicherter Wert, Farbe)
+ERNAEHRUNG_AMPEL = [
+    ("🟢 Umgesetzt", "Umgesetzt", "#2e7d46"),
+    ("🟡 Teilweise umgesetzt", "Teilweise umgesetzt", "#e3a008"),
+    ("🔴 Nicht umgesetzt", "Nicht umgesetzt", "#d9534f"),
+]
+
+# Smileys für "Gesamtbefinden"
+STIMMUNG_SMILEYS = [
+    ("😞 Schlecht", "😞 Schlecht"),
+    ("😐 Neutral", "😐 Neutral"),
+    ("😊 Gut", "😊 Gut"),
+]
+
 if "arsenal" not in st.session_state:
   st.session_state.arsenal = pd.DataFrame(
       [
@@ -417,7 +434,7 @@ if menu == "Startseite & Tagebuch":
   if st.session_state.get("eintrag_modal_aktiv", False):
     st.write("### 📝 Neuen Eintrag erfassen")
     # Kein st.form() hier: Felder innerhalb eines Formulars lösen erst
-    # beim Absenden einen Rerun aus, daher würde die Unterkategorie nicht
+    # beim Absenden einen Rerun aus, daher würden die Zusatzfelder nicht
     # sofort erscheinen. Stattdessen normale Widgets + eigene Buttons.
     selected_cat = st.selectbox(
         "Kategorie wählen",
@@ -433,17 +450,53 @@ if menu == "Startseite & Tagebuch":
     )
 
     selected_unterkat = ""
+    status_wert = "Aktiv"
+    minuten = 0
+
     if selected_cat == "Selbstmanagement":
       selected_unterkat = st.selectbox(
           "Unterkategorie",
           SELBSTMANAGEMENT_UNTERKATEGORIEN,
           key="entry_unterkategorie",
       )
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=30, key="entry_minuten"
+      )
+
+    elif selected_cat == "Ernährung":
+      selected_unterkat = st.radio(
+          "Tageszeit",
+          ERNAEHRUNG_TAGESZEITEN,
+          horizontal=True,
+          key="entry_tageszeit",
+      )
+      ampel_label = st.radio(
+          "Status",
+          [label for label, _, _ in ERNAEHRUNG_AMPEL],
+          horizontal=True,
+          key="entry_ampel",
+      )
+      status_wert = next(
+          wert for label, wert, _ in ERNAEHRUNG_AMPEL if label == ampel_label
+      )
+
+    elif selected_cat == "Gesamtbefinden":
+      smiley_label = st.radio(
+          "Stimmung wählen",
+          [label for label, _ in STIMMUNG_SMILEYS],
+          horizontal=True,
+          key="entry_smiley",
+      )
+      selected_unterkat = next(
+          wert for label, wert in STIMMUNG_SMILEYS if label == smiley_label
+      )
+
+    else:
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=30, key="entry_minuten"
+      )
 
     datum = st.date_input("Datum", value=heute, key="entry_datum")
-    minuten = st.number_input(
-        "Minuten", min_value=0, max_value=300, value=30, key="entry_minuten"
-    )
     notizen = st.text_input("Notizen / Details", key="entry_notizen")
 
     col_s1, col_s2 = st.columns(2)
@@ -466,7 +519,7 @@ if menu == "Startseite & Tagebuch":
               "Kategorie": selected_cat,
               "Unterkategorie": selected_unterkat,
               "Minuten": minuten,
-              "Status": "Aktiv",
+              "Status": status_wert,
               "Notizen": notizen,
           }]
       )
@@ -480,6 +533,7 @@ if menu == "Startseite & Tagebuch":
       st.session_state.eintrag_modal_aktiv = False
       st.rerun()
     st.write("---")
+
 
   # WOCHEN-ANSICHT (3x2 Raster wenn aktiviert)
   if st.session_state.wochen_ansicht_aktiv:
