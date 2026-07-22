@@ -315,6 +315,24 @@ if "protokoll" not in st.session_state:
       ]
   )
 
+# Eigene Übungen mit Sätzen/Wiederholungen (separat vom Tagebuch-Protokoll,
+# da dort Minuten statt Sätze/Wiederholungen erfasst werden)
+if "eigene_uebungen" not in st.session_state:
+  st.session_state.eigene_uebungen = pd.DataFrame(
+      columns=[
+          "Datum",
+          "Übung",
+          "Dauer (Min.)",
+          "Sätze",
+          "Wiederholungen",
+          "Notizen",
+      ]
+  )
+if "eigene_uebung_form_aktiv" not in st.session_state:
+  st.session_state.eigene_uebung_form_aktiv = False
+if "eigene_uebung_import_aktiv" not in st.session_state:
+  st.session_state.eigene_uebung_import_aktiv = False
+
 # Unterkategorien, die nur bei "Balance" zur Auswahl stehen
 BALANCE_UNTERKATEGORIEN = [
     "Meditation",
@@ -1316,6 +1334,199 @@ if True:
     )
   else:
     st.info("Noch keine Einträge vorhanden.")
+
+  st.write("---")
+  st.write("### 🏋️ Eigene Übungen (Sätze & Wiederholungen)")
+  st.caption(
+      "Für Übungen, die du lieber mit Sätzen und Wiederholungen statt"
+      " Minuten festhalten willst, z.B. eigenes Krafttraining."
+  )
+
+  col_u1, col_u2 = st.columns(2)
+  with col_u1:
+    if st.button(
+        "＋ Übung erfassen", key="btn_open_uebung_form",
+        type="primary", use_container_width=True,
+    ):
+      st.session_state.eigene_uebung_form_aktiv = True
+      st.session_state.eigene_uebung_import_aktiv = False
+      st.rerun()
+  with col_u2:
+    if st.button(
+        "⬆️ Excel importieren", key="btn_open_uebung_import",
+        use_container_width=True,
+    ):
+      st.session_state.eigene_uebung_import_aktiv = True
+      st.session_state.eigene_uebung_form_aktiv = False
+      st.rerun()
+
+  if st.session_state.eigene_uebung_form_aktiv:
+    st.write("---")
+    u_uebung = st.text_input("Übung", key="uebung_name_input")
+    u_datum = st.date_input("Datum", value=heute, key="uebung_datum_input")
+    u_dauer = st.number_input(
+        "Dauer (Minuten) – optional", min_value=0, max_value=300,
+        value=None, key="uebung_dauer_input",
+    )
+    u_saetze = st.number_input(
+        "Sätze – optional", min_value=0, max_value=50, value=None,
+        key="uebung_saetze_input",
+    )
+    u_wiederholungen = st.number_input(
+        "Wiederholungen – optional", min_value=0, max_value=1000,
+        value=None, key="uebung_wiederholungen_input",
+    )
+    u_notizen = st.text_input("Notizen", key="uebung_notizen_input")
+
+    col_us1, col_us2 = st.columns(2)
+    with col_us1:
+      uebung_save = st.button(
+          "Speichern", key="uebung_save_btn", type="primary",
+          use_container_width=True,
+      )
+    with col_us2:
+      uebung_cancel = st.button(
+          "Abbrechen", key="uebung_cancel_btn", use_container_width=True
+      )
+    if uebung_save:
+      if not u_uebung.strip():
+        st.error("Bitte einen Namen für die Übung eingeben.")
+      else:
+        neue_uebung = pd.DataFrame(
+            [{
+                "Datum": str(u_datum),
+                "Übung": u_uebung.strip(),
+                "Dauer (Min.)": u_dauer,
+                "Sätze": u_saetze,
+                "Wiederholungen": u_wiederholungen,
+                "Notizen": u_notizen.strip(),
+            }]
+        )
+        st.session_state.eigene_uebungen = pd.concat(
+            [st.session_state.eigene_uebungen, neue_uebung],
+            ignore_index=True,
+        )
+        st.session_state.eigene_uebung_form_aktiv = False
+        st.success("Gespeichert!")
+        st.rerun()
+    if uebung_cancel:
+      st.session_state.eigene_uebung_form_aktiv = False
+      st.rerun()
+
+  if st.session_state.eigene_uebung_import_aktiv:
+    st.write("---")
+    st.caption(
+        "Lade eine Excel-Datei mit deinen eigenen Übungen hoch (z.B."
+        " Export aus einer Trainings-App oder einer eigenen Tabelle)."
+    )
+    excel_upload = st.file_uploader(
+        "Excel-Datei auswählen", type=["xlsx", "xls"],
+        key="uebung_excel_upload",
+    )
+    if excel_upload is not None:
+      try:
+        import_df = pd.read_excel(excel_upload)
+        st.write("Vorschau:")
+        st.dataframe(import_df.head(), use_container_width=True)
+
+        spalten = import_df.columns.tolist()
+        keine_option = "– keine –"
+        u_datum_spalte = st.selectbox(
+            "Welche Spalte enthält das Datum?", spalten,
+            key="uebung_import_datum_spalte",
+        )
+        u_uebung_spalte = st.selectbox(
+            "Welche Spalte enthält den Übungsnamen?", spalten,
+            key="uebung_import_uebung_spalte",
+        )
+        u_dauer_spalte = st.selectbox(
+            "Welche Spalte enthält die Dauer in Minuten? (optional)",
+            [keine_option] + spalten, key="uebung_import_dauer_spalte",
+        )
+        u_saetze_spalte = st.selectbox(
+            "Welche Spalte enthält die Sätze? (optional)",
+            [keine_option] + spalten, key="uebung_import_saetze_spalte",
+        )
+        u_wdh_spalte = st.selectbox(
+            "Welche Spalte enthält die Wiederholungen? (optional)",
+            [keine_option] + spalten, key="uebung_import_wdh_spalte",
+        )
+        u_notizen_spalte = st.selectbox(
+            "Welche Spalte enthält Notizen? (optional)",
+            [keine_option] + spalten, key="uebung_import_notizen_spalte",
+        )
+
+        if st.button(
+            "Importieren", key="uebung_import_btn", type="primary"
+        ):
+          neue_zeilen = pd.DataFrame()
+          neue_zeilen["Datum"] = pd.to_datetime(
+              import_df[u_datum_spalte], errors="coerce"
+          ).dt.strftime("%Y-%m-%d")
+          neue_zeilen["Übung"] = import_df[u_uebung_spalte]
+          neue_zeilen["Dauer (Min.)"] = (
+              pd.to_numeric(import_df[u_dauer_spalte], errors="coerce")
+              if u_dauer_spalte != keine_option
+              else None
+          )
+          neue_zeilen["Sätze"] = (
+              pd.to_numeric(import_df[u_saetze_spalte], errors="coerce")
+              if u_saetze_spalte != keine_option
+              else None
+          )
+          neue_zeilen["Wiederholungen"] = (
+              pd.to_numeric(import_df[u_wdh_spalte], errors="coerce")
+              if u_wdh_spalte != keine_option
+              else None
+          )
+          neue_zeilen["Notizen"] = (
+              import_df[u_notizen_spalte]
+              if u_notizen_spalte != keine_option
+              else ""
+          )
+          neue_zeilen = neue_zeilen.dropna(subset=["Datum", "Übung"])
+          st.session_state.eigene_uebungen = pd.concat(
+              [st.session_state.eigene_uebungen, neue_zeilen],
+              ignore_index=True,
+          )
+          st.session_state.eigene_uebung_import_aktiv = False
+          st.success(f"{len(neue_zeilen)} Zeilen importiert!")
+          st.rerun()
+      except Exception as e:
+        st.error(f"Excel-Datei konnte nicht gelesen werden: {e}")
+
+    if st.button("Abbrechen", key="uebung_import_cancel_btn"):
+      st.session_state.eigene_uebung_import_aktiv = False
+      st.rerun()
+
+  uebungen_df = st.session_state.eigene_uebungen
+  if not uebungen_df.empty:
+    st.dataframe(uebungen_df, use_container_width=True)
+
+    @st.cache_data
+    def convert_uebungen_df_to_excel(dataframe):
+      from io import BytesIO
+
+      output = BytesIO()
+      with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        dataframe.to_excel(
+            writer, index=False, sheet_name="Eigene Übungen"
+        )
+      return output.getvalue()
+
+    uebungen_excel_data = convert_uebungen_df_to_excel(uebungen_df)
+    st.download_button(
+        label="📥 Als Excel-Datei herunterladen",
+        data=uebungen_excel_data,
+        file_name="Eigene_Uebungen.xlsx",
+        mime=(
+            "application/vnd.openxmlformats-officedocument"
+            ".spreadsheetml.sheet"
+        ),
+        key="uebungen_download_btn",
+    )
+  else:
+    st.info("Noch keine eigenen Übungen erfasst.")
 
 # ----------------------------------------------------
 # 2. ÜBUNGSARSENAL (direkt unter dem Tagebuch, keine eigene Seite mehr)
