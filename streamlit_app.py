@@ -253,6 +253,7 @@ AUSDAUER_UNTERKATEGORIEN = [
     "Radfahren",
     "Schwimmen",
     "Treppensteigen",
+    "Sonnengruß",
     "Sonstiges",
 ]
 
