@@ -224,9 +224,15 @@ def render_icon_box(
       st.rerun()
 
 
-def render_arsenal_tile(icon_html, kat_name, anzahl, box_height=88):
-  """Klickbare Kategorie-Kachel fürs Übungsarsenal - gleiche Optik/Logik
-  wie die Kacheln oben im Tagebuch, damit es einheitlich aussieht."""
+def render_arsenal_tile(
+    icon_html, kat_name, anzahl, box_height=88,
+    state_key="arsenal_detail_kat", button_prefix="arsenaltile",
+):
+  """Klickbare Kategorie-Kachel - gleiche Optik/Logik wie die Kacheln oben
+  im Tagebuch, damit es einheitlich aussieht. Wird sowohl fürs
+  Übungsarsenal als auch für die Kategorie-Übersicht bei "Eigene
+  Übungen" verwendet; state_key/button_prefix sorgen dabei für
+  eindeutige Widget-Keys je Bereich."""
   st.markdown(
       f"<div class='icon-box' style='text-align:center; background:white;"
       f" padding:6px; border-radius:8px 8px 0 0; border:1px solid #d0edd2;"
@@ -243,13 +249,13 @@ def render_arsenal_tile(icon_html, kat_name, anzahl, box_height=88):
       f"</div>",
       unsafe_allow_html=True,
   )
-  ist_aktiv = st.session_state.get("arsenal_detail_kat") == kat_name
+  ist_aktiv = st.session_state.get(state_key) == kat_name
   if st.button(
       "✕" if ist_aktiv else "🔍",
-      key=f"arsenaltile_{kat_name}",
+      key=f"{button_prefix}_{kat_name}",
       use_container_width=True,
   ):
-    st.session_state["arsenal_detail_kat"] = None if ist_aktiv else kat_name
+    st.session_state[state_key] = None if ist_aktiv else kat_name
     st.rerun()
 
 
@@ -1362,15 +1368,82 @@ if True:
       st.rerun()
 
   uebungen_df = st.session_state.eigene_uebungen
-  if not uebungen_df.empty:
-    st.dataframe(
-        uebungen_df,
-        use_container_width=True,
-        column_config={
-            "Bild": st.column_config.ImageColumn("Bild"),
-            "Link": st.column_config.LinkColumn("Link"),
-        },
+  if uebungen_df.empty:
+    st.info("Noch keine eigenen Übungen erfasst.")
+  else:
+    uebungen_kategorien = list(UEBUNG_UNTERKATEGORIEN.keys())
+    uebungen_icons = {
+        "Ausdauer": "🏃‍♂️",
+        "Kraft": "🏋️‍♂️",
+        "Beweglichkeit": beweglichkeit_icon_html(26),
+        "Balance": balance_icon_html(26),
+        "Ernährung": "🍽️",
+        "Gesamtbefinden": "😊",
+    }
+
+    u_kat_col1, u_kat_col2, u_kat_col3, u_kat_col4, u_kat_col5, u_kat_col6 = (
+        st.columns(6)
     )
+    for spalte, kat in zip(
+        [u_kat_col1, u_kat_col2, u_kat_col3, u_kat_col4, u_kat_col5,
+         u_kat_col6],
+        uebungen_kategorien,
+    ):
+      with spalte:
+        anzahl = len(uebungen_df[uebungen_df["Kategorie"] == kat])
+        render_arsenal_tile(
+            uebungen_icons.get(kat, "📌"), kat, anzahl,
+            state_key="uebungen_detail_kat", button_prefix="uebungtile",
+        )
+
+    # Detail-Liste für die angeklickte Kategorie
+    aktive_uebungen_kat = st.session_state.get("uebungen_detail_kat")
+    if aktive_uebungen_kat is not None:
+      kat_eintraege = uebungen_df[
+          uebungen_df["Kategorie"] == aktive_uebungen_kat
+      ]
+      st.write("---")
+      st.markdown(f"#### {aktive_uebungen_kat} ({len(kat_eintraege)})")
+      if kat_eintraege.empty:
+        st.info(f"Noch keine Einträge für {aktive_uebungen_kat}.")
+      else:
+        anzeige_spalten = [
+            c
+            for c in [
+                "Datum", "Unterkategorie", "Dauer (Min.)", "Sätze",
+                "Wiederholungen", "Notizen", "Link", "Bild",
+            ]
+            if c in kat_eintraege.columns
+        ]
+        st.dataframe(
+            kat_eintraege[anzeige_spalten].sort_values("Datum"),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Bild": st.column_config.ImageColumn("Bild"),
+                "Link": st.column_config.LinkColumn("Link"),
+            },
+        )
+      if st.button("✕ Schließen", key="uebungen_detail_schliessen_btn"):
+        st.session_state["uebungen_detail_kat"] = None
+        st.rerun()
+
+    # Falls Einträge eine Kategorie außerhalb der Standardliste haben
+    sonstige_uebungen = uebungen_df[
+        ~uebungen_df["Kategorie"].isin(uebungen_kategorien)
+    ]
+    if not sonstige_uebungen.empty:
+      with st.expander(f"Sonstige Kategorien ({len(sonstige_uebungen)})"):
+        st.dataframe(
+            sonstige_uebungen,
+            use_container_width=True,
+            column_config={
+                "Bild": st.column_config.ImageColumn("Bild"),
+                "Link": st.column_config.LinkColumn("Link"),
+            },
+        )
+
+    st.write("")
 
     @st.cache_data
     def convert_uebungen_df_to_excel(dataframe):
@@ -1394,8 +1467,6 @@ if True:
         ),
         key="uebungen_download_btn",
     )
-  else:
-    st.info("Noch keine eigenen Übungen erfasst.")
 
 # ----------------------------------------------------
 # 2. ÜBUNGSARSENAL (direkt unter dem Tagebuch, keine eigene Seite mehr)
