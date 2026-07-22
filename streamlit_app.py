@@ -263,6 +263,7 @@ BEWEGLICHKEIT_UNTERKATEGORIEN = [
     "Faszientraining",
     "Rückenfit",
     "Massage",
+    "Chi Gong",
     "Sonstiges",
 ]
 
