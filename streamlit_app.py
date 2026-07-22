@@ -51,6 +51,84 @@ def beweglichkeit_icon_html(size_px):
       f"vertical-align:middle;' />"
   )
 
+# --- Eigenes Icon für "Balance" (vom Nutzer bereitgestelltes Bild) ---
+BALANCE_ICON_B64 = (
+    "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"
+)
+
+
+def balance_icon_html(size_px):
+  """Gibt das eigene Balance-Icon (Originalbild) als img-Tag zurück."""
+  return (
+      f"<img src='data:image/png;base64,{BALANCE_ICON_B64}' "
+      f"style='height:{size_px}px; width:{size_px}px; object-fit:contain; "
+      f"vertical-align:middle;' />"
+  )
+
 
 def get_status_color(minutes, goal):
   """Liefert die Statusfarbe passend zur bisherigen Ampel-Logik
@@ -608,7 +686,8 @@ if True:
       )
     with mini_col4:
       render_icon_box(
-          "📋", get_cat_minutes("Balance"), 90,
+          balance_icon_html(30),
+          get_cat_minutes("Balance"), 90,
           box_height=108, icon_font_size=20, ring_size=44,
           click_key=("woche", "Balance"), kat_name="Balance",
       )
@@ -655,7 +734,8 @@ if True:
       )
     with t_col4:
       render_icon_box(
-          "📋", get_today_minutes("Balance"), 90,
+          balance_icon_html(26),
+          get_today_minutes("Balance"), 90,
           box_height=98, icon_font_size=18, ring_size=38,
           click_key=("heute", "Balance"), kat_name="Balance",
       )
@@ -901,7 +981,7 @@ if True:
         (("🏃‍♂️ Ausdauer", "Ausdauer"), ("🏋️‍♂️ Kraft", "Kraft")),
         (
             (f"{beweglichkeit_icon_html(20)} Beweglichkeit", "Beweglichkeit"),
-            ("📋 Balance", "Balance"),
+            (f"{balance_icon_html(20)} Balance", "Balance"),
         ),
         (("🍽️ Ernährung", "Ernährung"), ("😊 Gesamtbefinden", "Gesamtbefinden")),
     ]
@@ -1254,7 +1334,7 @@ if True:
           "Ausdauer": "🏃‍♂️",
           "Kraft": "🏋️‍♂️",
           "Beweglichkeit": beweglichkeit_icon_html(22),
-          "Balance": "📋",
+          "Balance": balance_icon_html(22),
           "Ernährung": "🍽️",
           "Gesamtbefinden": "😊",
       }
