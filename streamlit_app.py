@@ -120,9 +120,9 @@ def render_icon_box(
       f" box-sizing: border-box; display: flex; flex-direction: column;"
       f" align-items: center; justify-content: center; gap: 3px;"
       f" overflow: hidden;'>"
+      f"{label_html}"
       f"<span class='icon-box-symbol' style='font-size: {icon_font_size}px;"
       f" line-height: 1;'>{icon_html}</span>"
-      f"{label_html}"
       f"{ring_svg}"
       f"</div>",
       unsafe_allow_html=True,
@@ -148,9 +148,9 @@ def render_arsenal_tile(icon_html, kat_name, anzahl, box_height=82):
       f" border-bottom:none; width:100%; height:{box_height}px;"
       f" box-sizing:border-box; display:flex; flex-direction:column;"
       f" align-items:center; justify-content:center; gap:2px;'>"
-      f"<span style='font-size:20px; line-height:1;'>{icon_html}</span>"
       f"<span style='font-size:12px; font-weight:800; color:#1f4a34;"
       f" letter-spacing:0.2px; line-height:1.15;'>{kat_name}</span>"
+      f"<span style='font-size:20px; line-height:1;'>{icon_html}</span>"
       f"<span style='font-size:11px; color:#777;'>({anzahl})</span>"
       f"</div>",
       unsafe_allow_html=True,
