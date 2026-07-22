@@ -155,8 +155,9 @@ def render_arsenal_tile(icon_html, kat_name, anzahl, box_height=82):
       f" border-bottom:none; width:100%; height:{box_height}px;"
       f" box-sizing:border-box; display:flex; flex-direction:column;"
       f" align-items:center; justify-content:center; gap:2px;'>"
-      f"<span style='font-size:12px; font-weight:800; color:#1f4a34;"
-      f" letter-spacing:0.2px; line-height:1.15;'>{kat_name}</span>"
+      f"<span class='icon-box-label' style='font-size:12px; font-weight:800;"
+      f" color:#1f4a34; letter-spacing:0.2px;"
+      f" line-height:1.15;'>{kat_name}</span>"
       f"<span style='height:32px; display:flex; align-items:center;"
       f" justify-content:center; font-size:20px; line-height:1;'>"
       f"{icon_html}</span>"
@@ -236,8 +237,8 @@ if "protokoll" not in st.session_state:
       ]
   )
 
-# Unterkategorien, die nur bei "Selbstmanagement" zur Auswahl stehen
-SELBSTMANAGEMENT_UNTERKATEGORIEN = [
+# Unterkategorien, die nur bei "Ausgleich" zur Auswahl stehen
+AUSGLEICH_UNTERKATEGORIEN = [
     "Meditation",
     "Entspannung",
     "Koordination",
@@ -323,7 +324,7 @@ ARSENAL_KATEGORIEN = [
     "Ausdauer",
     "Kraft",
     "Beweglichkeit",
-    "Selbstmanagement",
+    "Ausgleich",
     "Ernährung",
     "Gesamtbefinden",
 ]
@@ -604,9 +605,9 @@ if True:
       )
     with mini_col4:
       render_icon_box(
-          "📋", get_cat_minutes("Selbstmanagement"), 90,
+          "📋", get_cat_minutes("Ausgleich"), 90,
           box_height=108, icon_font_size=20, ring_size=44,
-          click_key=("woche", "Selbstmanagement"), kat_name="Selbstmanagement",
+          click_key=("woche", "Ausgleich"), kat_name="Ausgleich",
       )
     with mini_col5:
       render_icon_box(
@@ -635,14 +636,12 @@ if True:
           "🏃‍♂️", get_today_minutes("Ausdauer"), 90,
           box_height=98, icon_font_size=18, ring_size=38,
           click_key=("heute", "Ausdauer"), kat_name="Ausdauer",
-          label_font_size=11,
       )
     with t_col2:
       render_icon_box(
           "🏋️‍♂️", get_today_minutes("Kraft"), 90,
           box_height=98, icon_font_size=18, ring_size=38,
           click_key=("heute", "Kraft"), kat_name="Kraft",
-          label_font_size=11,
       )
     with t_col3:
       render_icon_box(
@@ -650,28 +649,24 @@ if True:
           get_today_minutes("Beweglichkeit"), 90,
           box_height=98, icon_font_size=18, ring_size=38,
           click_key=("heute", "Beweglichkeit"), kat_name="Beweglichkeit",
-          label_font_size=11,
       )
     with t_col4:
       render_icon_box(
-          "📋", get_today_minutes("Selbstmanagement"), 90,
+          "📋", get_today_minutes("Ausgleich"), 90,
           box_height=98, icon_font_size=18, ring_size=38,
-          click_key=("heute", "Selbstmanagement"), kat_name="Selbstmanagement",
-          label_font_size=11,
+          click_key=("heute", "Ausgleich"), kat_name="Ausgleich",
       )
     with t_col5:
       render_icon_box(
           "🍽️", get_today_minutes("Ernährung"), 90,
           box_height=98, icon_font_size=18, ring_size=38,
           click_key=("heute", "Ernährung"), kat_name="Ernährung",
-          label_font_size=11,
       )
     with t_col6:
       render_icon_box(
           "😊", get_today_minutes("Gesamtbefinden"), 90,
           box_height=98, icon_font_size=18, ring_size=38,
           click_key=("heute", "Gesamtbefinden"), kat_name="Gesamtbefinden",
-          label_font_size=11,
       )
 
     # Detail-Liste, wenn eine Kachel (Woche oder Heute) angeklickt wurde
@@ -739,7 +734,7 @@ if True:
             "Ausdauer",
             "Kraft",
             "Beweglichkeit",
-            "Selbstmanagement",
+            "Ausgleich",
             "Ernährung",
             "Gesamtbefinden",
         ],
@@ -763,10 +758,10 @@ if True:
           "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
       )
 
-    elif selected_cat == "Selbstmanagement":
+    elif selected_cat == "Ausgleich":
       selected_unterkat = st.selectbox(
           "Unterkategorie",
-          SELBSTMANAGEMENT_UNTERKATEGORIEN,
+          AUSGLEICH_UNTERKATEGORIEN,
           key="entry_unterkategorie",
       )
       minuten = st.number_input(
@@ -903,7 +898,7 @@ if True:
         (("🏃‍♂️ Ausdauer", "Ausdauer"), ("🏋️‍♂️ Kraft", "Kraft")),
         (
             (f"{beweglichkeit_icon_html(20)} Beweglichkeit", "Beweglichkeit"),
-            ("📋 Selbstmanagement", "Selbstmanagement"),
+            ("📋 Ausgleich", "Ausgleich"),
         ),
         (("🍽️ Ernährung", "Ernährung"), ("😊 Gesamtbefinden", "Gesamtbefinden")),
     ]
@@ -1256,7 +1251,7 @@ if True:
           "Ausdauer": "🏃‍♂️",
           "Kraft": "🏋️‍♂️",
           "Beweglichkeit": beweglichkeit_icon_html(22),
-          "Selbstmanagement": "📋",
+          "Ausgleich": "📋",
           "Ernährung": "🍽️",
           "Gesamtbefinden": "😊",
       }
