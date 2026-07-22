@@ -97,15 +97,21 @@ def render_progress_ring_svg(minutes, goal, size=40, stroke_width=5):
 
 def render_icon_box(
     icon_html, minutes, goal, box_height=88, icon_font_size=20, ring_size=42,
-    click_key=None, kat_name=None, label_font_size=12,
+    click_key=None, kat_name=None, label_font_size=12, icon_row_height=None,
 ):
   """Rendert eines der 6 Status-Kästchen (Woche/Heute) mit Icon, der
   Kategorie-Beschriftung (gleiche Optik wie im Übungsarsenal) und einem
   Fortschrittsring (samt Minutenzahl) darunter. Feste Höhe/Breite, damit
-  alle 6 Boxen garantiert gleich groß sind. Wenn click_key gesetzt ist,
-  erscheint darunter ein kleiner Button, der die Detailliste dieser
-  Kategorie (click_key = (scope, kategorie)) öffnet."""
+  alle 6 Boxen garantiert gleich groß sind. Die Icon-Zeile bekommt eine
+  feste Höhe (icon_row_height), damit unterschiedlich große Icons (z.B.
+  das größere Beweglichkeit-Bild) Beschriftung und Ring nicht
+  verschieben - Text und Ring stehen dadurch bei allen Kategorien auf
+  gleicher Höhe. Wenn click_key gesetzt ist, erscheint darunter ein
+  kleiner Button, der die Detailliste dieser Kategorie
+  (click_key = (scope, kategorie)) öffnet."""
   ring_svg = render_progress_ring_svg(minutes, goal, size=ring_size)
+  if icon_row_height is None:
+    icon_row_height = icon_font_size + 12
   label_html = (
       f"<span class='icon-box-label' style='font-size: {label_font_size}px;"
       f" font-weight: 800; color: #1f4a34; letter-spacing: 0.2px;"
@@ -121,8 +127,9 @@ def render_icon_box(
       f" align-items: center; justify-content: center; gap: 3px;"
       f" overflow: hidden;'>"
       f"{label_html}"
-      f"<span class='icon-box-symbol' style='font-size: {icon_font_size}px;"
-      f" line-height: 1;'>{icon_html}</span>"
+      f"<span class='icon-box-symbol' style='height: {icon_row_height}px;"
+      f" display: flex; align-items: center; justify-content: center;"
+      f" font-size: {icon_font_size}px; line-height: 1;'>{icon_html}</span>"
       f"{ring_svg}"
       f"</div>",
       unsafe_allow_html=True,
@@ -150,7 +157,9 @@ def render_arsenal_tile(icon_html, kat_name, anzahl, box_height=82):
       f" align-items:center; justify-content:center; gap:2px;'>"
       f"<span style='font-size:12px; font-weight:800; color:#1f4a34;"
       f" letter-spacing:0.2px; line-height:1.15;'>{kat_name}</span>"
-      f"<span style='font-size:20px; line-height:1;'>{icon_html}</span>"
+      f"<span style='height:32px; display:flex; align-items:center;"
+      f" justify-content:center; font-size:20px; line-height:1;'>"
+      f"{icon_html}</span>"
       f"<span style='font-size:11px; color:#777;'>({anzahl})</span>"
       f"</div>",
       unsafe_allow_html=True,
