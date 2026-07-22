@@ -1336,7 +1336,7 @@ if True:
         st.rerun()
 
   st.write("---")
-  st.write("### 📒 Meine Trainingsaufzeichnungen")
+  st.write("### 📒 Erweiterte Trainingsnotizen")
   tab_protokoll, tab_uebungen = st.tabs(
       ["Tagebuch-Einträge", "Eigene Übungen (Sätze & Wiederholungen)"]
   )
