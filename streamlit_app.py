@@ -154,7 +154,7 @@ def render_progress_ring_svg(minutes, goal, size=40, stroke_width=5):
   circumference = 2 * math.pi * radius
   offset = circumference * (1 - ratio)
   center = size / 2
-  font_size = max(9, round(size * 0.32))
+  font_size = max(13, round(size * 0.5))
   return (
       f"<svg width='{size}' height='{size}' viewBox='0 0 {size} {size}'"
       f" style='display:block;'>"
@@ -224,7 +224,7 @@ def render_icon_box(
       st.rerun()
 
 
-def render_arsenal_tile(icon_html, kat_name, anzahl, box_height=82):
+def render_arsenal_tile(icon_html, kat_name, anzahl, box_height=88):
   """Klickbare Kategorie-Kachel fürs Übungsarsenal - gleiche Optik/Logik
   wie die Kacheln oben im Tagebuch, damit es einheitlich aussieht."""
   st.markdown(
@@ -236,8 +236,8 @@ def render_arsenal_tile(icon_html, kat_name, anzahl, box_height=82):
       f"<span class='icon-box-label' style='font-size:12px; font-weight:800;"
       f" color:#1f4a34; letter-spacing:0.2px;"
       f" line-height:1.15;'>{kat_name}</span>"
-      f"<span style='height:32px; display:flex; align-items:center;"
-      f" justify-content:center; font-size:20px; line-height:1;'>"
+      f"<span style='height:38px; display:flex; align-items:center;"
+      f" justify-content:center; font-size:26px; line-height:1;'>"
       f"{icon_html}</span>"
       f"<span style='font-size:11px; color:#777;'>({anzahl})</span>"
       f"</div>",
@@ -686,39 +686,39 @@ if True:
     with mini_col1:
       render_icon_box(
           "🏃‍♂️", get_cat_minutes("Ausdauer"), 90,
-          box_height=108, icon_font_size=20, ring_size=44,
+          box_height=108, icon_font_size=26, ring_size=34,
           click_key=("woche", "Ausdauer"), kat_name="Ausdauer",
       )
     with mini_col2:
       render_icon_box(
           "🏋️‍♂️", get_cat_minutes("Kraft"), 90,
-          box_height=108, icon_font_size=20, ring_size=44,
+          box_height=108, icon_font_size=26, ring_size=34,
           click_key=("woche", "Kraft"), kat_name="Kraft",
       )
     with mini_col3:
       render_icon_box(
-          beweglichkeit_icon_html(30),
+          beweglichkeit_icon_html(36),
           get_cat_minutes("Beweglichkeit"), 90,
-          box_height=108, icon_font_size=20, ring_size=44,
+          box_height=108, icon_font_size=26, ring_size=34,
           click_key=("woche", "Beweglichkeit"), kat_name="Beweglichkeit",
       )
     with mini_col4:
       render_icon_box(
-          balance_icon_html(30),
+          balance_icon_html(36),
           get_cat_minutes("Balance"), 90,
-          box_height=108, icon_font_size=20, ring_size=44,
+          box_height=108, icon_font_size=26, ring_size=34,
           click_key=("woche", "Balance"), kat_name="Balance",
       )
     with mini_col5:
       render_icon_box(
           "🍽️", get_cat_minutes("Ernährung"), 90,
-          box_height=108, icon_font_size=20, ring_size=44,
+          box_height=108, icon_font_size=26, ring_size=34,
           click_key=("woche", "Ernährung"), kat_name="Ernährung",
       )
     with mini_col6:
       render_icon_box(
           "😊", get_cat_minutes("Gesamtbefinden"), 90,
-          box_height=108, icon_font_size=20, ring_size=44,
+          box_height=108, icon_font_size=26, ring_size=34,
           click_key=("woche", "Gesamtbefinden"), kat_name="Gesamtbefinden",
       )
 
@@ -734,39 +734,39 @@ if True:
     with t_col1:
       render_icon_box(
           "🏃‍♂️", get_today_minutes("Ausdauer"), 90,
-          box_height=98, icon_font_size=18, ring_size=38,
+          box_height=98, icon_font_size=22, ring_size=28,
           click_key=("heute", "Ausdauer"), kat_name="Ausdauer",
       )
     with t_col2:
       render_icon_box(
           "🏋️‍♂️", get_today_minutes("Kraft"), 90,
-          box_height=98, icon_font_size=18, ring_size=38,
+          box_height=98, icon_font_size=22, ring_size=28,
           click_key=("heute", "Kraft"), kat_name="Kraft",
       )
     with t_col3:
       render_icon_box(
-          beweglichkeit_icon_html(26),
+          beweglichkeit_icon_html(30),
           get_today_minutes("Beweglichkeit"), 90,
-          box_height=98, icon_font_size=18, ring_size=38,
+          box_height=98, icon_font_size=22, ring_size=28,
           click_key=("heute", "Beweglichkeit"), kat_name="Beweglichkeit",
       )
     with t_col4:
       render_icon_box(
-          balance_icon_html(26),
+          balance_icon_html(30),
           get_today_minutes("Balance"), 90,
-          box_height=98, icon_font_size=18, ring_size=38,
+          box_height=98, icon_font_size=22, ring_size=28,
           click_key=("heute", "Balance"), kat_name="Balance",
       )
     with t_col5:
       render_icon_box(
           "🍽️", get_today_minutes("Ernährung"), 90,
-          box_height=98, icon_font_size=18, ring_size=38,
+          box_height=98, icon_font_size=22, ring_size=28,
           click_key=("heute", "Ernährung"), kat_name="Ernährung",
       )
     with t_col6:
       render_icon_box(
           "😊", get_today_minutes("Gesamtbefinden"), 90,
-          box_height=98, icon_font_size=18, ring_size=38,
+          box_height=98, icon_font_size=22, ring_size=28,
           click_key=("heute", "Gesamtbefinden"), kat_name="Gesamtbefinden",
       )
 
@@ -1312,221 +1312,226 @@ if True:
         st.session_state.vital_import_aktiv = False
         st.rerun()
 
-  st.write("### Bisherige Protokoll-Einträge")
-  if not df.empty:
-    st.dataframe(df, use_container_width=True)
-
-    @st.cache_data
-    def convert_df_to_excel(dataframe):
-      from io import BytesIO
-
-      output = BytesIO()
-      with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        dataframe.to_excel(writer, index=False, sheet_name="Protokoll")
-      return output.getvalue()
-
-    excel_data = convert_df_to_excel(df)
-    st.download_button(
-        label="📥 Als Excel-Datei herunterladen",
-        data=excel_data,
-        file_name="Sport_Tagebuch.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-  else:
-    st.info("Noch keine Einträge vorhanden.")
-
   st.write("---")
-  st.write("### 🏋️ Eigene Übungen (Sätze & Wiederholungen)")
-  st.caption(
-      "Für Übungen, die du lieber mit Sätzen und Wiederholungen statt"
-      " Minuten festhalten willst, z.B. eigenes Krafttraining."
+  st.write("### 📒 Meine Trainingsaufzeichnungen")
+  tab_protokoll, tab_uebungen = st.tabs(
+      ["Tagebuch-Einträge", "Eigene Übungen (Sätze & Wiederholungen)"]
   )
 
-  col_u1, col_u2 = st.columns(2)
-  with col_u1:
-    if st.button(
-        "＋ Übung erfassen", key="btn_open_uebung_form",
-        type="primary", use_container_width=True,
-    ):
-      st.session_state.eigene_uebung_form_aktiv = True
-      st.session_state.eigene_uebung_import_aktiv = False
-      st.rerun()
-  with col_u2:
-    if st.button(
-        "⬆️ Excel importieren", key="btn_open_uebung_import",
-        use_container_width=True,
-    ):
-      st.session_state.eigene_uebung_import_aktiv = True
-      st.session_state.eigene_uebung_form_aktiv = False
-      st.rerun()
+  with tab_protokoll:
+    if not df.empty:
+      st.dataframe(df, use_container_width=True)
 
-  if st.session_state.eigene_uebung_form_aktiv:
-    st.write("---")
-    u_uebung = st.text_input("Übung", key="uebung_name_input")
-    u_datum = st.date_input("Datum", value=heute, key="uebung_datum_input")
-    u_dauer = st.number_input(
-        "Dauer (Minuten) – optional", min_value=0, max_value=300,
-        value=None, key="uebung_dauer_input",
-    )
-    u_saetze = st.number_input(
-        "Sätze – optional", min_value=0, max_value=50, value=None,
-        key="uebung_saetze_input",
-    )
-    u_wiederholungen = st.number_input(
-        "Wiederholungen – optional", min_value=0, max_value=1000,
-        value=None, key="uebung_wiederholungen_input",
-    )
-    u_notizen = st.text_input("Notizen", key="uebung_notizen_input")
+      @st.cache_data
+      def convert_df_to_excel(dataframe):
+        from io import BytesIO
 
-    col_us1, col_us2 = st.columns(2)
-    with col_us1:
-      uebung_save = st.button(
-          "Speichern", key="uebung_save_btn", type="primary",
-          use_container_width=True,
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+          dataframe.to_excel(writer, index=False, sheet_name="Protokoll")
+        return output.getvalue()
+
+      excel_data = convert_df_to_excel(df)
+      st.download_button(
+          label="📥 Als Excel-Datei herunterladen",
+          data=excel_data,
+          file_name="Sport_Tagebuch.xlsx",
+          mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       )
-    with col_us2:
-      uebung_cancel = st.button(
-          "Abbrechen", key="uebung_cancel_btn", use_container_width=True
-      )
-    if uebung_save:
-      if not u_uebung.strip():
-        st.error("Bitte einen Namen für die Übung eingeben.")
-      else:
-        neue_uebung = pd.DataFrame(
-            [{
-                "Datum": str(u_datum),
-                "Übung": u_uebung.strip(),
-                "Dauer (Min.)": u_dauer,
-                "Sätze": u_saetze,
-                "Wiederholungen": u_wiederholungen,
-                "Notizen": u_notizen.strip(),
-            }]
-        )
-        st.session_state.eigene_uebungen = pd.concat(
-            [st.session_state.eigene_uebungen, neue_uebung],
-            ignore_index=True,
-        )
-        st.session_state.eigene_uebung_form_aktiv = False
-        st.success("Gespeichert!")
-        st.rerun()
-    if uebung_cancel:
-      st.session_state.eigene_uebung_form_aktiv = False
-      st.rerun()
+    else:
+      st.info("Noch keine Einträge vorhanden.")
 
-  if st.session_state.eigene_uebung_import_aktiv:
-    st.write("---")
+  with tab_uebungen:
     st.caption(
-        "Lade eine Excel-Datei mit deinen eigenen Übungen hoch (z.B."
-        " Export aus einer Trainings-App oder einer eigenen Tabelle)."
+        "Für Übungen, die du lieber mit Sätzen und Wiederholungen statt"
+        " Minuten festhalten willst, z.B. eigenes Krafttraining."
     )
-    excel_upload = st.file_uploader(
-        "Excel-Datei auswählen", type=["xlsx", "xls"],
-        key="uebung_excel_upload",
-    )
-    if excel_upload is not None:
-      try:
-        import_df = pd.read_excel(excel_upload)
-        st.write("Vorschau:")
-        st.dataframe(import_df.head(), use_container_width=True)
 
-        spalten = import_df.columns.tolist()
-        keine_option = "– keine –"
-        u_datum_spalte = st.selectbox(
-            "Welche Spalte enthält das Datum?", spalten,
-            key="uebung_import_datum_spalte",
-        )
-        u_uebung_spalte = st.selectbox(
-            "Welche Spalte enthält den Übungsnamen?", spalten,
-            key="uebung_import_uebung_spalte",
-        )
-        u_dauer_spalte = st.selectbox(
-            "Welche Spalte enthält die Dauer in Minuten? (optional)",
-            [keine_option] + spalten, key="uebung_import_dauer_spalte",
-        )
-        u_saetze_spalte = st.selectbox(
-            "Welche Spalte enthält die Sätze? (optional)",
-            [keine_option] + spalten, key="uebung_import_saetze_spalte",
-        )
-        u_wdh_spalte = st.selectbox(
-            "Welche Spalte enthält die Wiederholungen? (optional)",
-            [keine_option] + spalten, key="uebung_import_wdh_spalte",
-        )
-        u_notizen_spalte = st.selectbox(
-            "Welche Spalte enthält Notizen? (optional)",
-            [keine_option] + spalten, key="uebung_import_notizen_spalte",
-        )
+    col_u1, col_u2 = st.columns(2)
+    with col_u1:
+      if st.button(
+          "＋ Übung erfassen", key="btn_open_uebung_form",
+          type="primary", use_container_width=True,
+      ):
+        st.session_state.eigene_uebung_form_aktiv = True
+        st.session_state.eigene_uebung_import_aktiv = False
+        st.rerun()
+    with col_u2:
+      if st.button(
+          "⬆️ Excel importieren", key="btn_open_uebung_import",
+          use_container_width=True,
+      ):
+        st.session_state.eigene_uebung_import_aktiv = True
+        st.session_state.eigene_uebung_form_aktiv = False
+        st.rerun()
 
-        if st.button(
-            "Importieren", key="uebung_import_btn", type="primary"
-        ):
-          neue_zeilen = pd.DataFrame()
-          neue_zeilen["Datum"] = pd.to_datetime(
-              import_df[u_datum_spalte], errors="coerce"
-          ).dt.strftime("%Y-%m-%d")
-          neue_zeilen["Übung"] = import_df[u_uebung_spalte]
-          neue_zeilen["Dauer (Min.)"] = (
-              pd.to_numeric(import_df[u_dauer_spalte], errors="coerce")
-              if u_dauer_spalte != keine_option
-              else None
+    if st.session_state.eigene_uebung_form_aktiv:
+      st.write("---")
+      u_uebung = st.text_input("Übung", key="uebung_name_input")
+      u_datum = st.date_input("Datum", value=heute, key="uebung_datum_input")
+      u_dauer = st.number_input(
+          "Dauer (Minuten) – optional", min_value=0, max_value=300,
+          value=None, key="uebung_dauer_input",
+      )
+      u_saetze = st.number_input(
+          "Sätze – optional", min_value=0, max_value=50, value=None,
+          key="uebung_saetze_input",
+      )
+      u_wiederholungen = st.number_input(
+          "Wiederholungen – optional", min_value=0, max_value=1000,
+          value=None, key="uebung_wiederholungen_input",
+      )
+      u_notizen = st.text_input("Notizen", key="uebung_notizen_input")
+
+      col_us1, col_us2 = st.columns(2)
+      with col_us1:
+        uebung_save = st.button(
+            "Speichern", key="uebung_save_btn", type="primary",
+            use_container_width=True,
+        )
+      with col_us2:
+        uebung_cancel = st.button(
+            "Abbrechen", key="uebung_cancel_btn", use_container_width=True
+        )
+      if uebung_save:
+        if not u_uebung.strip():
+          st.error("Bitte einen Namen für die Übung eingeben.")
+        else:
+          neue_uebung = pd.DataFrame(
+              [{
+                  "Datum": str(u_datum),
+                  "Übung": u_uebung.strip(),
+                  "Dauer (Min.)": u_dauer,
+                  "Sätze": u_saetze,
+                  "Wiederholungen": u_wiederholungen,
+                  "Notizen": u_notizen.strip(),
+              }]
           )
-          neue_zeilen["Sätze"] = (
-              pd.to_numeric(import_df[u_saetze_spalte], errors="coerce")
-              if u_saetze_spalte != keine_option
-              else None
-          )
-          neue_zeilen["Wiederholungen"] = (
-              pd.to_numeric(import_df[u_wdh_spalte], errors="coerce")
-              if u_wdh_spalte != keine_option
-              else None
-          )
-          neue_zeilen["Notizen"] = (
-              import_df[u_notizen_spalte]
-              if u_notizen_spalte != keine_option
-              else ""
-          )
-          neue_zeilen = neue_zeilen.dropna(subset=["Datum", "Übung"])
           st.session_state.eigene_uebungen = pd.concat(
-              [st.session_state.eigene_uebungen, neue_zeilen],
+              [st.session_state.eigene_uebungen, neue_uebung],
               ignore_index=True,
           )
-          st.session_state.eigene_uebung_import_aktiv = False
-          st.success(f"{len(neue_zeilen)} Zeilen importiert!")
+          st.session_state.eigene_uebung_form_aktiv = False
+          st.success("Gespeichert!")
           st.rerun()
-      except Exception as e:
-        st.error(f"Excel-Datei konnte nicht gelesen werden: {e}")
+      if uebung_cancel:
+        st.session_state.eigene_uebung_form_aktiv = False
+        st.rerun()
 
-    if st.button("Abbrechen", key="uebung_import_cancel_btn"):
-      st.session_state.eigene_uebung_import_aktiv = False
-      st.rerun()
+    if st.session_state.eigene_uebung_import_aktiv:
+      st.write("---")
+      st.caption(
+          "Lade eine Excel-Datei mit deinen eigenen Übungen hoch (z.B."
+          " Export aus einer Trainings-App oder einer eigenen Tabelle)."
+      )
+      excel_upload = st.file_uploader(
+          "Excel-Datei auswählen", type=["xlsx", "xls"],
+          key="uebung_excel_upload",
+      )
+      if excel_upload is not None:
+        try:
+          import_df = pd.read_excel(excel_upload)
+          st.write("Vorschau:")
+          st.dataframe(import_df.head(), use_container_width=True)
 
-  uebungen_df = st.session_state.eigene_uebungen
-  if not uebungen_df.empty:
-    st.dataframe(uebungen_df, use_container_width=True)
+          spalten = import_df.columns.tolist()
+          keine_option = "– keine –"
+          u_datum_spalte = st.selectbox(
+              "Welche Spalte enthält das Datum?", spalten,
+              key="uebung_import_datum_spalte",
+          )
+          u_uebung_spalte = st.selectbox(
+              "Welche Spalte enthält den Übungsnamen?", spalten,
+              key="uebung_import_uebung_spalte",
+          )
+          u_dauer_spalte = st.selectbox(
+              "Welche Spalte enthält die Dauer in Minuten? (optional)",
+              [keine_option] + spalten, key="uebung_import_dauer_spalte",
+          )
+          u_saetze_spalte = st.selectbox(
+              "Welche Spalte enthält die Sätze? (optional)",
+              [keine_option] + spalten, key="uebung_import_saetze_spalte",
+          )
+          u_wdh_spalte = st.selectbox(
+              "Welche Spalte enthält die Wiederholungen? (optional)",
+              [keine_option] + spalten, key="uebung_import_wdh_spalte",
+          )
+          u_notizen_spalte = st.selectbox(
+              "Welche Spalte enthält Notizen? (optional)",
+              [keine_option] + spalten, key="uebung_import_notizen_spalte",
+          )
 
-    @st.cache_data
-    def convert_uebungen_df_to_excel(dataframe):
-      from io import BytesIO
+          if st.button(
+              "Importieren", key="uebung_import_btn", type="primary"
+          ):
+            neue_zeilen = pd.DataFrame()
+            neue_zeilen["Datum"] = pd.to_datetime(
+                import_df[u_datum_spalte], errors="coerce"
+            ).dt.strftime("%Y-%m-%d")
+            neue_zeilen["Übung"] = import_df[u_uebung_spalte]
+            neue_zeilen["Dauer (Min.)"] = (
+                pd.to_numeric(import_df[u_dauer_spalte], errors="coerce")
+                if u_dauer_spalte != keine_option
+                else None
+            )
+            neue_zeilen["Sätze"] = (
+                pd.to_numeric(import_df[u_saetze_spalte], errors="coerce")
+                if u_saetze_spalte != keine_option
+                else None
+            )
+            neue_zeilen["Wiederholungen"] = (
+                pd.to_numeric(import_df[u_wdh_spalte], errors="coerce")
+                if u_wdh_spalte != keine_option
+                else None
+            )
+            neue_zeilen["Notizen"] = (
+                import_df[u_notizen_spalte]
+                if u_notizen_spalte != keine_option
+                else ""
+            )
+            neue_zeilen = neue_zeilen.dropna(subset=["Datum", "Übung"])
+            st.session_state.eigene_uebungen = pd.concat(
+                [st.session_state.eigene_uebungen, neue_zeilen],
+                ignore_index=True,
+            )
+            st.session_state.eigene_uebung_import_aktiv = False
+            st.success(f"{len(neue_zeilen)} Zeilen importiert!")
+            st.rerun()
+        except Exception as e:
+          st.error(f"Excel-Datei konnte nicht gelesen werden: {e}")
 
-      output = BytesIO()
-      with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        dataframe.to_excel(
-            writer, index=False, sheet_name="Eigene Übungen"
-        )
-      return output.getvalue()
+      if st.button("Abbrechen", key="uebung_import_cancel_btn"):
+        st.session_state.eigene_uebung_import_aktiv = False
+        st.rerun()
 
-    uebungen_excel_data = convert_uebungen_df_to_excel(uebungen_df)
-    st.download_button(
-        label="📥 Als Excel-Datei herunterladen",
-        data=uebungen_excel_data,
-        file_name="Eigene_Uebungen.xlsx",
-        mime=(
-            "application/vnd.openxmlformats-officedocument"
-            ".spreadsheetml.sheet"
-        ),
-        key="uebungen_download_btn",
-    )
-  else:
-    st.info("Noch keine eigenen Übungen erfasst.")
+    uebungen_df = st.session_state.eigene_uebungen
+    if not uebungen_df.empty:
+      st.dataframe(uebungen_df, use_container_width=True)
+
+      @st.cache_data
+      def convert_uebungen_df_to_excel(dataframe):
+        from io import BytesIO
+
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+          dataframe.to_excel(
+              writer, index=False, sheet_name="Eigene Übungen"
+          )
+        return output.getvalue()
+
+      uebungen_excel_data = convert_uebungen_df_to_excel(uebungen_df)
+      st.download_button(
+          label="📥 Als Excel-Datei herunterladen",
+          data=uebungen_excel_data,
+          file_name="Eigene_Uebungen.xlsx",
+          mime=(
+              "application/vnd.openxmlformats-officedocument"
+              ".spreadsheetml.sheet"
+          ),
+          key="uebungen_download_btn",
+      )
+    else:
+      st.info("Noch keine eigenen Übungen erfasst.")
 
 # ----------------------------------------------------
 # 2. ÜBUNGSARSENAL (direkt unter dem Tagebuch, keine eigene Seite mehr)
@@ -1544,8 +1549,8 @@ if True:
       arsenal_icons = {
           "Ausdauer": "🏃‍♂️",
           "Kraft": "🏋️‍♂️",
-          "Beweglichkeit": beweglichkeit_icon_html(22),
-          "Balance": balance_icon_html(22),
+          "Beweglichkeit": beweglichkeit_icon_html(26),
+          "Balance": balance_icon_html(26),
           "Ernährung": "🍽️",
           "Gesamtbefinden": "😊",
       }
