@@ -327,7 +327,7 @@ ARSENAL_KATEGORIEN = [
     "Ernährung",
     "Gesamtbefinden",
 ]
-ARSENAL_TYPEN = ["Bild", "Link", "Text", "Video"]
+ARSENAL_TYPEN = ["Bild", "Link", "Text"]
 
 if "wochen_ansicht_aktiv" not in st.session_state:
   st.session_state.wochen_ansicht_aktiv = False
