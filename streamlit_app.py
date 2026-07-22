@@ -237,12 +237,15 @@ if "protokoll" not in st.session_state:
       ]
   )
 
-# Unterkategorien, die nur bei "Ausgleich" zur Auswahl stehen
-AUSGLEICH_UNTERKATEGORIEN = [
+# Unterkategorien, die nur bei "Balance" zur Auswahl stehen
+BALANCE_UNTERKATEGORIEN = [
     "Meditation",
     "Entspannung",
     "Koordination",
     "Gleichgewichtstraining",
+    "Jonglieren",
+    "Life Kinetik",
+    "Beweg dein Hirn",
 ]
 
 # Unterkategorien, die nur bei "Ausdauer" zur Auswahl stehen
@@ -324,7 +327,7 @@ ARSENAL_KATEGORIEN = [
     "Ausdauer",
     "Kraft",
     "Beweglichkeit",
-    "Ausgleich",
+    "Balance",
     "Ernährung",
     "Gesamtbefinden",
 ]
@@ -605,9 +608,9 @@ if True:
       )
     with mini_col4:
       render_icon_box(
-          "📋", get_cat_minutes("Ausgleich"), 90,
+          "📋", get_cat_minutes("Balance"), 90,
           box_height=108, icon_font_size=20, ring_size=44,
-          click_key=("woche", "Ausgleich"), kat_name="Ausgleich",
+          click_key=("woche", "Balance"), kat_name="Balance",
       )
     with mini_col5:
       render_icon_box(
@@ -652,9 +655,9 @@ if True:
       )
     with t_col4:
       render_icon_box(
-          "📋", get_today_minutes("Ausgleich"), 90,
+          "📋", get_today_minutes("Balance"), 90,
           box_height=98, icon_font_size=18, ring_size=38,
-          click_key=("heute", "Ausgleich"), kat_name="Ausgleich",
+          click_key=("heute", "Balance"), kat_name="Balance",
       )
     with t_col5:
       render_icon_box(
@@ -734,7 +737,7 @@ if True:
             "Ausdauer",
             "Kraft",
             "Beweglichkeit",
-            "Ausgleich",
+            "Balance",
             "Ernährung",
             "Gesamtbefinden",
         ],
@@ -758,10 +761,10 @@ if True:
           "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
       )
 
-    elif selected_cat == "Ausgleich":
+    elif selected_cat == "Balance":
       selected_unterkat = st.selectbox(
           "Unterkategorie",
-          AUSGLEICH_UNTERKATEGORIEN,
+          BALANCE_UNTERKATEGORIEN,
           key="entry_unterkategorie",
       )
       minuten = st.number_input(
@@ -898,7 +901,7 @@ if True:
         (("🏃‍♂️ Ausdauer", "Ausdauer"), ("🏋️‍♂️ Kraft", "Kraft")),
         (
             (f"{beweglichkeit_icon_html(20)} Beweglichkeit", "Beweglichkeit"),
-            ("📋 Ausgleich", "Ausgleich"),
+            ("📋 Balance", "Balance"),
         ),
         (("🍽️ Ernährung", "Ernährung"), ("😊 Gesamtbefinden", "Gesamtbefinden")),
     ]
@@ -1251,7 +1254,7 @@ if True:
           "Ausdauer": "🏃‍♂️",
           "Kraft": "🏋️‍♂️",
           "Beweglichkeit": beweglichkeit_icon_html(22),
-          "Ausgleich": "📋",
+          "Balance": "📋",
           "Ernährung": "🍽️",
           "Gesamtbefinden": "😊",
       }
