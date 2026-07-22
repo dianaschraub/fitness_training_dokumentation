@@ -97,23 +97,32 @@ def render_progress_ring_svg(minutes, goal, size=40, stroke_width=5):
 
 def render_icon_box(
     icon_html, minutes, goal, box_height=88, icon_font_size=20, ring_size=42,
-    click_key=None,
+    click_key=None, kat_name=None, label_font_size=12,
 ):
-  """Rendert eines der 6 Status-Kästchen (Woche/Heute) mit Icon oben und
-  einem Fortschrittsring (samt Minutenzahl) darunter. Feste Höhe/Breite,
-  damit alle 6 Boxen garantiert gleich groß sind. Wenn click_key gesetzt
-  ist, erscheint darunter ein kleiner Button, der die Detailliste dieser
+  """Rendert eines der 6 Status-Kästchen (Woche/Heute) mit Icon, der
+  Kategorie-Beschriftung (gleiche Optik wie im Übungsarsenal) und einem
+  Fortschrittsring (samt Minutenzahl) darunter. Feste Höhe/Breite, damit
+  alle 6 Boxen garantiert gleich groß sind. Wenn click_key gesetzt ist,
+  erscheint darunter ein kleiner Button, der die Detailliste dieser
   Kategorie (click_key = (scope, kategorie)) öffnet."""
   ring_svg = render_progress_ring_svg(minutes, goal, size=ring_size)
+  label_html = (
+      f"<span class='icon-box-label' style='font-size: {label_font_size}px;"
+      f" font-weight: 800; color: #1f4a34; letter-spacing: 0.2px;"
+      f" line-height: 1.15;'>{kat_name}</span>"
+      if kat_name
+      else ""
+  )
   st.markdown(
       f"<div class='icon-box' style='text-align: center; background: white;"
       f" padding: 6px; border-radius: 8px 8px 0 0; border: 1px solid"
       f" #d0edd2; border-bottom: none; width: 100%; height: {box_height}px;"
       f" box-sizing: border-box; display: flex; flex-direction: column;"
-      f" align-items: center; justify-content: center; gap: 4px;"
+      f" align-items: center; justify-content: center; gap: 3px;"
       f" overflow: hidden;'>"
       f"<span class='icon-box-symbol' style='font-size: {icon_font_size}px;"
       f" line-height: 1;'>{icon_html}</span>"
+      f"{label_html}"
       f"{ring_svg}"
       f"</div>",
       unsafe_allow_html=True,
@@ -140,8 +149,8 @@ def render_arsenal_tile(icon_html, kat_name, anzahl, box_height=82):
       f" box-sizing:border-box; display:flex; flex-direction:column;"
       f" align-items:center; justify-content:center; gap:2px;'>"
       f"<span style='font-size:20px; line-height:1;'>{icon_html}</span>"
-      f"<span style='font-size:11px; font-weight:700; color:#2f5e45;"
-      f" line-height:1.2;'>{kat_name}</span>"
+      f"<span style='font-size:12px; font-weight:800; color:#1f4a34;"
+      f" letter-spacing:0.2px; line-height:1.15;'>{kat_name}</span>"
       f"<span style='font-size:11px; color:#777;'>({anzahl})</span>"
       f"</div>",
       unsafe_allow_html=True,
@@ -506,6 +515,9 @@ if True:
             .icon-box .icon-box-symbol {
                 font-size: 15px !important;
             }
+            .icon-box .icon-box-label {
+                font-size: 9px !important;
+            }
         }
 
         /* Plus/Minus-Stepper-Buttons beim Minuten-Eingabefeld ausblenden */
@@ -563,39 +575,39 @@ if True:
     with mini_col1:
       render_icon_box(
           "🏃‍♂️", get_cat_minutes("Ausdauer"), 90,
-          box_height=90, icon_font_size=20, ring_size=44,
-          click_key=("woche", "Ausdauer"),
+          box_height=108, icon_font_size=20, ring_size=44,
+          click_key=("woche", "Ausdauer"), kat_name="Ausdauer",
       )
     with mini_col2:
       render_icon_box(
           "🏋️‍♂️", get_cat_minutes("Kraft"), 90,
-          box_height=90, icon_font_size=20, ring_size=44,
-          click_key=("woche", "Kraft"),
+          box_height=108, icon_font_size=20, ring_size=44,
+          click_key=("woche", "Kraft"), kat_name="Kraft",
       )
     with mini_col3:
       render_icon_box(
           beweglichkeit_icon_html(30),
           get_cat_minutes("Beweglichkeit"), 90,
-          box_height=90, icon_font_size=20, ring_size=44,
-          click_key=("woche", "Beweglichkeit"),
+          box_height=108, icon_font_size=20, ring_size=44,
+          click_key=("woche", "Beweglichkeit"), kat_name="Beweglichkeit",
       )
     with mini_col4:
       render_icon_box(
           "📋", get_cat_minutes("Selbstmanagement"), 90,
-          box_height=90, icon_font_size=20, ring_size=44,
-          click_key=("woche", "Selbstmanagement"),
+          box_height=108, icon_font_size=20, ring_size=44,
+          click_key=("woche", "Selbstmanagement"), kat_name="Selbstmanagement",
       )
     with mini_col5:
       render_icon_box(
           "🍽️", get_cat_minutes("Ernährung"), 90,
-          box_height=90, icon_font_size=20, ring_size=44,
-          click_key=("woche", "Ernährung"),
+          box_height=108, icon_font_size=20, ring_size=44,
+          click_key=("woche", "Ernährung"), kat_name="Ernährung",
       )
     with mini_col6:
       render_icon_box(
           "😊", get_cat_minutes("Gesamtbefinden"), 90,
-          box_height=90, icon_font_size=20, ring_size=44,
-          click_key=("woche", "Gesamtbefinden"),
+          box_height=108, icon_font_size=20, ring_size=44,
+          click_key=("woche", "Gesamtbefinden"), kat_name="Gesamtbefinden",
       )
 
     st.write("")
@@ -610,39 +622,45 @@ if True:
     with t_col1:
       render_icon_box(
           "🏃‍♂️", get_today_minutes("Ausdauer"), 90,
-          box_height=80, icon_font_size=18, ring_size=38,
-          click_key=("heute", "Ausdauer"),
+          box_height=98, icon_font_size=18, ring_size=38,
+          click_key=("heute", "Ausdauer"), kat_name="Ausdauer",
+          label_font_size=11,
       )
     with t_col2:
       render_icon_box(
           "🏋️‍♂️", get_today_minutes("Kraft"), 90,
-          box_height=80, icon_font_size=18, ring_size=38,
-          click_key=("heute", "Kraft"),
+          box_height=98, icon_font_size=18, ring_size=38,
+          click_key=("heute", "Kraft"), kat_name="Kraft",
+          label_font_size=11,
       )
     with t_col3:
       render_icon_box(
           beweglichkeit_icon_html(26),
           get_today_minutes("Beweglichkeit"), 90,
-          box_height=80, icon_font_size=18, ring_size=38,
-          click_key=("heute", "Beweglichkeit"),
+          box_height=98, icon_font_size=18, ring_size=38,
+          click_key=("heute", "Beweglichkeit"), kat_name="Beweglichkeit",
+          label_font_size=11,
       )
     with t_col4:
       render_icon_box(
           "📋", get_today_minutes("Selbstmanagement"), 90,
-          box_height=80, icon_font_size=18, ring_size=38,
-          click_key=("heute", "Selbstmanagement"),
+          box_height=98, icon_font_size=18, ring_size=38,
+          click_key=("heute", "Selbstmanagement"), kat_name="Selbstmanagement",
+          label_font_size=11,
       )
     with t_col5:
       render_icon_box(
           "🍽️", get_today_minutes("Ernährung"), 90,
-          box_height=80, icon_font_size=18, ring_size=38,
-          click_key=("heute", "Ernährung"),
+          box_height=98, icon_font_size=18, ring_size=38,
+          click_key=("heute", "Ernährung"), kat_name="Ernährung",
+          label_font_size=11,
       )
     with t_col6:
       render_icon_box(
           "😊", get_today_minutes("Gesamtbefinden"), 90,
-          box_height=80, icon_font_size=18, ring_size=38,
-          click_key=("heute", "Gesamtbefinden"),
+          box_height=98, icon_font_size=18, ring_size=38,
+          click_key=("heute", "Gesamtbefinden"), kat_name="Gesamtbefinden",
+          label_font_size=11,
       )
 
     # Detail-Liste, wenn eine Kachel (Woche oder Heute) angeklickt wurde
