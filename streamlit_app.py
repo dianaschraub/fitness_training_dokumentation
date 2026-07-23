@@ -1258,14 +1258,24 @@ if True:
       return None
     return treffer[spalte].dropna().iloc[-1]
 
-  def _vital_woche_avg(spalte):
+  def _vital_zeitraum_avg(spalte, zeitraum):
     if vital_df.empty:
       return None
-    woche_df = vital_df[
-        (vital_df["Datum"] >= str(start_der_woche))
-        & (vital_df["Datum"] <= str(ende_der_woche))
-    ]
-    werte = woche_df[spalte].dropna()
+    if zeitraum == "Woche":
+      zeitraum_df = vital_df[
+          (vital_df["Datum"] >= str(start_der_woche))
+          & (vital_df["Datum"] <= str(ende_der_woche))
+      ]
+    else:
+      zeitraum_tage = {
+          "Monat": 30,
+          "3 Monate": 90,
+          "6 Monate": 180,
+          "Jahr": 365,
+      }[zeitraum]
+      stichtag = str(heute - datetime.timedelta(days=zeitraum_tage))
+      zeitraum_df = vital_df[vital_df["Datum"] >= stichtag]
+    werte = zeitraum_df[spalte].dropna()
     if werte.empty:
       return None
     return werte.mean()
@@ -1283,9 +1293,7 @@ if True:
     return werte.iloc[-1]
 
   schritte_heute = _vital_heute("Schritte")
-  schritte_woche_avg = _vital_woche_avg("Schritte")
   gewicht_heute = _vital_heute("Gewicht")
-  gewicht_woche_avg = _vital_woche_avg("Gewicht")
   vo2max_aktuell = _vital_letzter_wert("VO2max")
 
   if "koerpergroesse_cm" not in st.session_state:
@@ -1310,6 +1318,14 @@ if True:
       groesse_m = st.session_state.koerpergroesse_cm / 100
       bmi_wert = gewicht_heute / (groesse_m**2)
 
+    zeitraum_auswahl = st.selectbox(
+        "Zeitraum für die Ø-Werte",
+        ["Woche", "Monat", "3 Monate", "6 Monate", "Jahr"],
+        key="vital_zeitraum_auswahl",
+    )
+    schritte_zeitraum_avg = _vital_zeitraum_avg("Schritte", zeitraum_auswahl)
+    gewicht_zeitraum_avg = _vital_zeitraum_avg("Gewicht", zeitraum_auswahl)
+
     with st.container(key="vital_metrics_row"):
       m_col1, m_col2, m_col3, m_col4, m_col5, m_col6 = st.columns(6)
       with m_col1:
@@ -1321,9 +1337,9 @@ if True:
         )
       with m_col2:
         st.metric(
-            "Ø Schritte/Tag (Woche)",
-            f"{int(schritte_woche_avg):,}".replace(",", ".")
-            if schritte_woche_avg is not None
+            f"Ø Schritte/Tag ({zeitraum_auswahl})",
+            f"{int(schritte_zeitraum_avg):,}".replace(",", ".")
+            if schritte_zeitraum_avg is not None
             else "–",
         )
       with m_col3:
@@ -1333,9 +1349,9 @@ if True:
         )
       with m_col4:
         st.metric(
-            "Ø Gewicht (Woche) in kg",
-            f"{gewicht_woche_avg:.1f}"
-            if gewicht_woche_avg is not None
+            f"Ø Gewicht ({zeitraum_auswahl}) in kg",
+            f"{gewicht_zeitraum_avg:.1f}"
+            if gewicht_zeitraum_avg is not None
             else "–",
         )
       with m_col5:
