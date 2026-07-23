@@ -673,6 +673,25 @@ if True:
         button[data-testid="stNumberInputStepUp"] {
             display: none !important;
         }
+
+        /* Die 3er-Spalten bei "Weitere Details" und den Filtern
+           (Kategorie/Unterkategorie/Zeitraum bzw. Dauer/Sätze/
+           Wiederholungen) sollen auf schmalen Handy-Screens untereinander
+           stehen dürfen - der nowrap-Zwang oben ist nur für die
+           Kategorie-Kacheln gedacht und macht diese Eingabefelder auf dem
+           Handy sonst unbenutzbar schmal. */
+        @media (max-width: 640px) {
+            div.st-key-wd_details_row div[data-testid="stHorizontalBlock"],
+            div.st-key-protokoll_filter_row div[data-testid="stHorizontalBlock"],
+            div.st-key-uebungen_filter_row div[data-testid="stHorizontalBlock"] {
+                flex-wrap: wrap !important;
+            }
+            div.st-key-wd_details_row div[data-testid="column"],
+            div.st-key-protokoll_filter_row div[data-testid="column"],
+            div.st-key-uebungen_filter_row div[data-testid="column"] {
+                min-width: 100% !important;
+            }
+        }
         </style>
         """,
       unsafe_allow_html=True,
@@ -979,22 +998,23 @@ if True:
     wd_link = ""
     wd_bild_upload = None
     if weitere_details_aktiv:
-      wd_col1, wd_col2, wd_col3 = st.columns(3)
-      with wd_col1:
-        wd_dauer = st.number_input(
-            "Dauer (Minuten)", min_value=0, max_value=300, value=None,
-            key="entry_wd_dauer",
-        )
-      with wd_col2:
-        wd_saetze = st.number_input(
-            "Sätze", min_value=0, max_value=50, value=None,
-            key="entry_wd_saetze",
-        )
-      with wd_col3:
-        wd_wiederholungen = st.number_input(
-            "Wiederholungen", min_value=0, max_value=1000, value=None,
-            key="entry_wd_wiederholungen",
-        )
+      with st.container(key="wd_details_row"):
+        wd_col1, wd_col2, wd_col3 = st.columns(3)
+        with wd_col1:
+          wd_dauer = st.number_input(
+              "Dauer (Minuten)", min_value=0, max_value=300, value=None,
+              key="entry_wd_dauer",
+          )
+        with wd_col2:
+          wd_saetze = st.number_input(
+              "Sätze", min_value=0, max_value=50, value=None,
+              key="entry_wd_saetze",
+          )
+        with wd_col3:
+          wd_wiederholungen = st.number_input(
+              "Wiederholungen", min_value=0, max_value=1000, value=None,
+              key="entry_wd_wiederholungen",
+          )
       wd_link = st.text_input("Link – optional", key="entry_wd_link")
       wd_bild_upload = st.file_uploader(
           "Bild – optional", type=["png", "jpg", "jpeg"],
@@ -1424,33 +1444,34 @@ if True:
   with tab_protokoll:
     if not df.empty:
       st.markdown("#### 🔍 Tagebuch filtern")
-      p_col1, p_col2, p_col3 = st.columns(3)
-      with p_col1:
-        p_kategorie = st.selectbox(
-            "Kategorie", ["Alle Kategorien"] + ARSENAL_KATEGORIEN,
-            key="protokoll_filter_kategorie",
-        )
-      with p_col2:
-        if p_kategorie == "Alle Kategorien":
-          p_unterkategorie_optionen = sorted(
-              df["Unterkategorie"].dropna().unique().tolist()
+      with st.container(key="protokoll_filter_row"):
+        p_col1, p_col2, p_col3 = st.columns(3)
+        with p_col1:
+          p_kategorie = st.selectbox(
+              "Kategorie", ["Alle Kategorien"] + ARSENAL_KATEGORIEN,
+              key="protokoll_filter_kategorie",
           )
-        else:
-          p_unterkategorie_optionen = UEBUNG_UNTERKATEGORIEN.get(
-              p_kategorie, []
+        with p_col2:
+          if p_kategorie == "Alle Kategorien":
+            p_unterkategorie_optionen = sorted(
+                df["Unterkategorie"].dropna().unique().tolist()
+            )
+          else:
+            p_unterkategorie_optionen = UEBUNG_UNTERKATEGORIEN.get(
+                p_kategorie, []
+            )
+          p_unterkategorie = st.selectbox(
+              "Unterkategorie",
+              ["Alle Unterkategorien"] + list(p_unterkategorie_optionen),
+              key="protokoll_filter_unterkategorie",
           )
-        p_unterkategorie = st.selectbox(
-            "Unterkategorie",
-            ["Alle Unterkategorien"] + list(p_unterkategorie_optionen),
-            key="protokoll_filter_unterkategorie",
-        )
-      with p_col3:
-        p_zeitraum = st.selectbox(
-            "Zeitraum",
-            ["Alle", "Heute", "Letzte Woche", "Letzter Monat",
-             "Letzte 3 Monate", "Letztes Jahr"],
-            key="protokoll_filter_zeitraum",
-        )
+        with p_col3:
+          p_zeitraum = st.selectbox(
+              "Zeitraum",
+              ["Alle", "Heute", "Letzte Woche", "Letzter Monat",
+               "Letzte 3 Monate", "Letztes Jahr"],
+              key="protokoll_filter_zeitraum",
+          )
 
       gefilterter_df = df.copy()
       if p_kategorie != "Alle Kategorien":
@@ -1781,32 +1802,33 @@ if True:
 
       st.write("---")
       st.markdown("#### 🔍 Trainingsnotizen filtern")
-      f_col1, f_col2, f_col3 = st.columns(3)
-      with f_col1:
-        f_kategorie = st.selectbox(
-            "Kategorie", ["Alle Kategorien"] + uebungen_kategorien,
-            key="uebungen_filter_kategorie",
-        )
-      with f_col2:
-        if f_kategorie == "Alle Kategorien":
-          f_unterkategorie_optionen = sorted(
-              uebungen_df["Unterkategorie"].dropna().unique().tolist()
+      with st.container(key="uebungen_filter_row"):
+        f_col1, f_col2, f_col3 = st.columns(3)
+        with f_col1:
+          f_kategorie = st.selectbox(
+              "Kategorie", ["Alle Kategorien"] + uebungen_kategorien,
+              key="uebungen_filter_kategorie",
           )
-        else:
-          f_unterkategorie_optionen = UEBUNG_UNTERKATEGORIEN.get(
-              f_kategorie, []
+        with f_col2:
+          if f_kategorie == "Alle Kategorien":
+            f_unterkategorie_optionen = sorted(
+                uebungen_df["Unterkategorie"].dropna().unique().tolist()
+            )
+          else:
+            f_unterkategorie_optionen = UEBUNG_UNTERKATEGORIEN.get(
+                f_kategorie, []
+            )
+          f_unterkategorie = st.selectbox(
+              "Unterkategorie",
+              ["Alle Unterkategorien"] + list(f_unterkategorie_optionen),
+              key="uebungen_filter_unterkategorie",
           )
-        f_unterkategorie = st.selectbox(
-            "Unterkategorie",
-            ["Alle Unterkategorien"] + list(f_unterkategorie_optionen),
-            key="uebungen_filter_unterkategorie",
-        )
-      with f_col3:
-        f_zeitraum = st.selectbox(
-            "Zeitraum",
-            ["Alle", "Letzte Woche", "Letzter Monat", "Letztes Jahr"],
-            key="uebungen_filter_zeitraum",
-        )
+        with f_col3:
+          f_zeitraum = st.selectbox(
+              "Zeitraum",
+              ["Alle", "Letzte Woche", "Letzter Monat", "Letztes Jahr"],
+              key="uebungen_filter_zeitraum",
+          )
 
       gefilterte_df = uebungen_df.copy()
       if f_kategorie != "Alle Kategorien":
