@@ -695,6 +695,13 @@ if True:
                 min-width: 100% !important;
             }
         }
+
+        /* Gewicht-Kacheln: Zahl kleiner, da die Einheit "kg" jetzt im
+           Label steht und nicht mehr hinter der Zahl */
+        div.st-key-gewicht_heute_metric [data-testid="stMetricValue"],
+        div.st-key-gewicht_woche_metric [data-testid="stMetricValue"] {
+            font-size: 1.4rem !important;
+        }
         </style>
         """,
       unsafe_allow_html=True,
@@ -1253,11 +1260,6 @@ if True:
   if "koerpergroesse_cm" not in st.session_state:
     st.session_state.koerpergroesse_cm = None
 
-  bmi_wert = None
-  if gewicht_heute and st.session_state.koerpergroesse_cm:
-    groesse_m = st.session_state.koerpergroesse_cm / 100
-    bmi_wert = gewicht_heute / (groesse_m**2)
-
   with st.container(key="vitalcard"):
     st.subheader("📊 Vitalwerte")
 
@@ -1271,6 +1273,11 @@ if True:
     st.session_state.koerpergroesse_cm = (
         groesse_input if groesse_input else None
     )
+
+    bmi_wert = None
+    if gewicht_heute and st.session_state.koerpergroesse_cm:
+      groesse_m = st.session_state.koerpergroesse_cm / 100
+      bmi_wert = gewicht_heute / (groesse_m**2)
 
     m_col1, m_col2, m_col3, m_col4, m_col5, m_col6 = st.columns(6)
     with m_col1:
@@ -1288,17 +1295,19 @@ if True:
           else "–",
       )
     with m_col3:
-      st.metric(
-          "Gewicht heute",
-          f"{gewicht_heute:.1f} kg" if gewicht_heute is not None else "–",
-      )
+      with st.container(key="gewicht_heute_metric"):
+        st.metric(
+            "Gewicht heute in kg",
+            f"{gewicht_heute:.1f}" if gewicht_heute is not None else "–",
+        )
     with m_col4:
-      st.metric(
-          "Ø Gewicht (Woche)",
-          f"{gewicht_woche_avg:.1f} kg"
-          if gewicht_woche_avg is not None
-          else "–",
-      )
+      with st.container(key="gewicht_woche_metric"):
+        st.metric(
+            "Ø Gewicht (Woche) in kg",
+            f"{gewicht_woche_avg:.1f}"
+            if gewicht_woche_avg is not None
+            else "–",
+        )
     with m_col5:
       st.metric(
           "BMI", f"{bmi_wert:.1f}" if bmi_wert is not None else "–"
