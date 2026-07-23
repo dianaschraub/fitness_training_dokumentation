@@ -1,6 +1,7 @@
 import base64
 import math
 import datetime
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -1417,10 +1418,20 @@ if True:
         if gewicht_verlauf.empty:
           st.info("Keine Gewicht-Einträge in diesem Zeitraum.")
         else:
-          st.line_chart(
-              gewicht_verlauf.set_index("Datum")["Gewicht"],
-              height=220,
+          gewicht_chart = (
+              alt.Chart(gewicht_verlauf)
+              .mark_line(point=True)
+              .encode(
+                  x=alt.X("Datum:T", title=None),
+                  y=alt.Y(
+                      "Gewicht:Q",
+                      title=None,
+                      scale=alt.Scale(domain=[40, 90]),
+                  ),
+              )
+              .properties(height=220)
           )
+          st.altair_chart(gewicht_chart, width="stretch")
 
     st.write("")
     col_v1, col_v2 = st.columns(2)
