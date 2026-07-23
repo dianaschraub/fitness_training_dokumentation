@@ -1,14 +1,34 @@
 import base64
 import math
 import datetime
+from io import BytesIO
 import altair as alt
+import gspread
 import pandas as pd
 import streamlit as st
+from google.oauth2.service_account import Credentials
+from PIL import Image
 
 # Seiten-Konfiguration
 st.set_page_config(
     page_title="Sport-Tagebuch", page_icon="🏃‍♀️", layout="centered"
 )
+
+# --- Anmeldung: ohne Google-Login keine Nutzung der App -------------
+if not st.user.is_logged_in:
+  st.title("🏃‍♀️ Sport-Tagebuch")
+  st.write(
+      "Bitte melde dich mit deinem Google-Konto an, um deine "
+      "Trainingsdaten zu sehen und zu speichern."
+  )
+  st.button("Mit Google anmelden", on_click=st.login, type="primary")
+  st.stop()
+
+NUTZER_EMAIL = st.user.email
+
+st.caption(f"Angemeldet als {NUTZER_EMAIL}")
+if st.button("Abmelden", key="logout_btn"):
+  st.logout()
 
 # --- Eigenes Icon für "Beweglichkeit" (Original-Bild des Nutzers) ---
 BEWEGLICHKEIT_ICON_B64 = (
@@ -309,40 +329,162 @@ def handle_sonstiges_unterkategorie(selected_unterkat, cat_key):
   return freitext if freitext else "Sonstiges"
 
 
+# --- Google Sheets als dauerhafter Speicher (pro Google-Konto) ------
+# Jede Tabelle bekommt ein eigenes Tabellenblatt ("Nutzer"-Spalte trennt
+# die Zeilen der einzelnen Google-Konten). Gelesen wird nur einmal pro
+# Sitzung (siehe die "if ... not in st.session_state"-Guards weiter
+# unten); geschrieben wird direkt nach jeder Änderung.
+GSHEET_TABELLEN = {
+    "protokoll": {
+        "spalten": [
+            "Datum", "Kategorie", "Unterkategorie", "Minuten", "Status",
+            "Notizen", "Verknüpfte Übung", "Verknüpfter Link",
+            "Verknüpftes Bild",
+        ],
+        "numerisch": ["Minuten"],
+    },
+    "eigene_uebungen": {
+        "spalten": [
+            "Datum", "Kategorie", "Unterkategorie", "Dauer (Min.)",
+            "Sätze", "Wiederholungen", "Notizen", "Link", "Bild",
+        ],
+        "numerisch": ["Dauer (Min.)", "Sätze", "Wiederholungen"],
+    },
+    "vitaldaten": {
+        "spalten": ["Datum", "Schritte", "Gewicht", "VO2max"],
+        "numerisch": ["Schritte", "Gewicht", "VO2max"],
+    },
+    "arsenal": {
+        "spalten": [
+            "Kategorie", "Typ", "Bereich / Übung", "Link", "Beschreibung",
+            "Bild",
+        ],
+        "numerisch": [],
+    },
+}
+
+
+@st.cache_resource
+def _gsheet_client():
+  creds = Credentials.from_service_account_info(
+      dict(st.secrets["gcp_service_account"]),
+      scopes=["https://www.googleapis.com/auth/spreadsheets"],
+  )
+  return gspread.authorize(creds)
+
+
+@st.cache_resource
+def _spreadsheet():
+  return _gsheet_client().open_by_url(st.secrets["sheets"]["spreadsheet_url"])
+
+
+def _worksheet(tab_name, spalten):
+  tabelle = _spreadsheet()
+  try:
+    return tabelle.worksheet(tab_name)
+  except gspread.WorksheetNotFound:
+    arbeitsblatt = tabelle.add_worksheet(
+        title=tab_name, rows=1000, cols=len(spalten) + 1
+    )
+    arbeitsblatt.append_row(["Nutzer"] + spalten)
+    return arbeitsblatt
+
+
+def _lade_nutzer_df(tab_name):
+  info = GSHEET_TABELLEN[tab_name]
+  spalten = info["spalten"]
+  arbeitsblatt = _worksheet(tab_name, spalten)
+  alle_zeilen = arbeitsblatt.get_all_records()
+  eigene_zeilen = [
+      zeile for zeile in alle_zeilen if zeile.get("Nutzer") == NUTZER_EMAIL
+  ]
+  df = pd.DataFrame(eigene_zeilen, columns=["Nutzer"] + spalten)
+  df = df.drop(columns=["Nutzer"])
+  for spalte in info["numerisch"]:
+    df[spalte] = pd.to_numeric(df[spalte], errors="coerce")
+  return df.reset_index(drop=True)
+
+
+def _speichere_nutzer_df(tab_name, df):
+  info = GSHEET_TABELLEN[tab_name]
+  spalten = info["spalten"]
+  arbeitsblatt = _worksheet(tab_name, spalten)
+  alle_zeilen = arbeitsblatt.get_all_records()
+  andere_nutzer_zeilen = [
+      [zeile.get(spalte, "") for spalte in ["Nutzer"] + spalten]
+      for zeile in alle_zeilen
+      if zeile.get("Nutzer") != NUTZER_EMAIL
+  ]
+  eigene_neue_zeilen = df[spalten].fillna("").astype(str).values.tolist()
+  eigene_neue_zeilen = [
+      [NUTZER_EMAIL] + zeile for zeile in eigene_neue_zeilen
+  ]
+  header = ["Nutzer"] + spalten
+  arbeitsblatt.clear()
+  arbeitsblatt.update([header] + andere_nutzer_zeilen + eigene_neue_zeilen)
+
+
+def _lade_koerpergroesse():
+  arbeitsblatt = _worksheet("profil", ["Koerpergroesse_cm"])
+  alle_zeilen = arbeitsblatt.get_all_records()
+  for zeile in alle_zeilen:
+    if zeile.get("Nutzer") == NUTZER_EMAIL:
+      wert = zeile.get("Koerpergroesse_cm")
+      return float(wert) if wert not in (None, "") else None
+  return None
+
+
+def _speichere_koerpergroesse(wert):
+  arbeitsblatt = _worksheet("profil", ["Koerpergroesse_cm"])
+  alle_zeilen = arbeitsblatt.get_all_records()
+  andere_nutzer_zeilen = [
+      [zeile.get("Nutzer", ""), zeile.get("Koerpergroesse_cm", "")]
+      for zeile in alle_zeilen
+      if zeile.get("Nutzer") != NUTZER_EMAIL
+  ]
+  eigene_zeile = [[NUTZER_EMAIL, str(wert) if wert else ""]]
+  arbeitsblatt.clear()
+  arbeitsblatt.update(
+      [["Nutzer", "Koerpergroesse_cm"]] + andere_nutzer_zeilen + eigene_zeile
+  )
+
+
+def _bild_datei_zu_data_uri(hochgeladene_datei, ziel_zeichen=45000):
+  """Verkleinert/komprimiert ein hochgeladenes Bild, damit die
+  base64-codierte Zeichenkette sicher in eine Google-Sheets-Zelle passt
+  (Limit ca. 50.000 Zeichen pro Zelle). Schrumpft nötigenfalls in
+  mehreren Schritten weiter, falls ein Foto auch komprimiert noch zu
+  groß wäre."""
+  bild = Image.open(hochgeladene_datei).convert("RGB")
+  breite = 800
+  qualitaet = 70
+  data_uri = ""
+  for _ in range(6):
+    versuch = bild
+    if versuch.width > breite:
+      neue_hoehe = int(versuch.height * (breite / versuch.width))
+      versuch = versuch.resize((breite, neue_hoehe))
+    puffer = BytesIO()
+    versuch.save(puffer, format="JPEG", quality=qualitaet, optimize=True)
+    b64 = base64.b64encode(puffer.getvalue()).decode("utf-8")
+    data_uri = f"data:image/jpeg;base64,{b64}"
+    if len(data_uri) <= ziel_zeichen:
+      break
+    breite = int(breite * 0.75)
+    qualitaet = max(30, qualitaet - 15)
+  return data_uri
+
+
 # Initialisierung des Session State für Daten
 # Tagebuch-Protokoll: einfache Einträge mit Kategorie/Unterkategorie/
 # Minuten (treibt die Woche/Heute-Kacheln oben). Eigene Übungen (weiter
 # unten) ist ein zweites, unabhängiges System für Einträge mit Sätzen/
 # Wiederholungen/Link/Bild.
 if "protokoll" not in st.session_state:
-  st.session_state.protokoll = pd.DataFrame(
-      columns=[
-          "Datum",
-          "Kategorie",
-          "Unterkategorie",
-          "Minuten",
-          "Status",
-          "Notizen",
-          "Verknüpfte Übung",
-          "Verknüpfter Link",
-          "Verknüpftes Bild",
-      ]
-  )
+  st.session_state.protokoll = _lade_nutzer_df("protokoll")
 
 if "eigene_uebungen" not in st.session_state:
-  st.session_state.eigene_uebungen = pd.DataFrame(
-      columns=[
-          "Datum",
-          "Kategorie",
-          "Unterkategorie",
-          "Dauer (Min.)",
-          "Sätze",
-          "Wiederholungen",
-          "Notizen",
-          "Link",
-          "Bild",
-      ]
-  )
+  st.session_state.eigene_uebungen = _lade_nutzer_df("eigene_uebungen")
 if "eigene_uebung_form_aktiv" not in st.session_state:
   st.session_state.eigene_uebung_form_aktiv = False
 if "eigene_uebung_import_aktiv" not in st.session_state:
@@ -421,42 +563,45 @@ STIMMUNG_SMILEYS = [
 ]
 
 if "arsenal" not in st.session_state:
-  st.session_state.arsenal = pd.DataFrame(
-      [
-          {
-              "Kategorie": "Beweglichkeit",
-              "Typ": "Text",
-              "Bereich / Übung": "Mobilisation & Dehnen",
-              "Link": "https://example.com/mobilitaet",
-              "Beschreibung": "Tägliche Routine für den Rücken",
-              "Bild": "",
-          },
-          {
-              "Kategorie": "Kraft",
-              "Typ": "Text",
-              "Bereich / Übung": "Kräftigung Rumpf",
-              "Link": "https://example.com/ruecken",
-              "Beschreibung": "Aufrechte Haltung, Bauchspannung halten",
-              "Bild": "",
-          },
-          {
-              "Kategorie": "Ausdauer",
-              "Typ": "Text",
-              "Bereich / Übung": "AIMO App",
-              "Link": "",
-              "Beschreibung": "Empfehlenswerte App zur Unterstützung beim Ausdauertraining",
-              "Bild": "",
-          },
-          {
-              "Kategorie": "Kraft",
-              "Typ": "Text",
-              "Bereich / Übung": "AIMO App",
-              "Link": "",
-              "Beschreibung": "Empfehlenswerte App zur Unterstützung beim Krafttraining",
-              "Bild": "",
-          },
-      ]
-  )
+  st.session_state.arsenal = _lade_nutzer_df("arsenal")
+  if st.session_state.arsenal.empty:
+    # Erstmalige Anmeldung: ein paar Beispiel-Einträge zum Start
+    st.session_state.arsenal = pd.DataFrame(
+        [
+            {
+                "Kategorie": "Beweglichkeit",
+                "Typ": "Text",
+                "Bereich / Übung": "Mobilisation & Dehnen",
+                "Link": "https://example.com/mobilitaet",
+                "Beschreibung": "Tägliche Routine für den Rücken",
+                "Bild": "",
+            },
+            {
+                "Kategorie": "Kraft",
+                "Typ": "Text",
+                "Bereich / Übung": "Kräftigung Rumpf",
+                "Link": "https://example.com/ruecken",
+                "Beschreibung": "Aufrechte Haltung, Bauchspannung halten",
+                "Bild": "",
+            },
+            {
+                "Kategorie": "Ausdauer",
+                "Typ": "Text",
+                "Bereich / Übung": "AIMO App",
+                "Link": "",
+                "Beschreibung": "Empfehlenswerte App zur Unterstützung beim Ausdauertraining",
+                "Bild": "",
+            },
+            {
+                "Kategorie": "Kraft",
+                "Typ": "Text",
+                "Bereich / Übung": "AIMO App",
+                "Link": "",
+                "Beschreibung": "Empfehlenswerte App zur Unterstützung beim Krafttraining",
+                "Bild": "",
+            },
+        ]
+    )
 
 # Kategorien und Typen für das Übungsarsenal (gleiche 6 Kategorien wie im
 # Tagebuch, plus Typ: was für eine Art von Eintrag das ist)
@@ -476,9 +621,7 @@ if "wochen_ansicht_aktiv" not in st.session_state:
 # Vitaldaten: Schritte & Gewicht (manuell oder per CSV-Import von
 # Garmin/Google Fit erfasst)
 if "vitaldaten" not in st.session_state:
-  st.session_state.vitaldaten = pd.DataFrame(
-      columns=["Datum", "Schritte", "Gewicht", "VO2max"]
-  )
+  st.session_state.vitaldaten = _lade_nutzer_df("vitaldaten")
 if "vital_form_aktiv" not in st.session_state:
   st.session_state.vital_form_aktiv = False
 if "vital_import_aktiv" not in st.session_state:
@@ -1132,13 +1275,11 @@ if True:
       st.session_state.protokoll = pd.concat(
           [st.session_state.protokoll, neuer_eintrag], ignore_index=True
       )
+      _speichere_nutzer_df("protokoll", st.session_state.protokoll)
       if weitere_details_aktiv:
         wd_bild_data_uri = ""
         if wd_bild_upload is not None:
-          wd_bild_b64 = base64.b64encode(wd_bild_upload.getvalue()).decode(
-              "utf-8"
-          )
-          wd_bild_data_uri = f"data:{wd_bild_upload.type};base64,{wd_bild_b64}"
+          wd_bild_data_uri = _bild_datei_zu_data_uri(wd_bild_upload)
         neue_uebung = pd.DataFrame(
             [{
                 "Datum": str(datum),
@@ -1155,6 +1296,9 @@ if True:
         st.session_state.eigene_uebungen = pd.concat(
             [st.session_state.eigene_uebungen, neue_uebung],
             ignore_index=True,
+        )
+        _speichere_nutzer_df(
+            "eigene_uebungen", st.session_state.eigene_uebungen
         )
       st.session_state.eintrag_modal_aktiv = False
       st.success("Eintrag erfolgreich gespeichert!")
@@ -1312,7 +1456,7 @@ if True:
   vo2max_aktuell = _vital_letzter_wert("VO2max")
 
   if "koerpergroesse_cm" not in st.session_state:
-    st.session_state.koerpergroesse_cm = None
+    st.session_state.koerpergroesse_cm = _lade_koerpergroesse()
 
   with st.container(key="vitalcard"):
     st.subheader("📊 Vitalwerte")
@@ -1327,6 +1471,7 @@ if True:
       )
       if groesse_input:
         st.session_state.koerpergroesse_cm = groesse_input
+        _speichere_koerpergroesse(groesse_input)
         st.rerun()
     else:
       with st.expander(
@@ -1340,9 +1485,10 @@ if True:
             value=st.session_state.koerpergroesse_cm,
             key="groesse_input",
         )
-        st.session_state.koerpergroesse_cm = (
-            groesse_input if groesse_input else None
-        )
+        neue_groesse = groesse_input if groesse_input else None
+        if neue_groesse != st.session_state.koerpergroesse_cm:
+          st.session_state.koerpergroesse_cm = neue_groesse
+          _speichere_koerpergroesse(neue_groesse)
 
     bmi_wert = None
     if gewicht_heute and st.session_state.koerpergroesse_cm:
@@ -1494,6 +1640,7 @@ if True:
             [st.session_state.vitaldaten, neuer_vital_eintrag],
             ignore_index=True,
         )
+        _speichere_nutzer_df("vitaldaten", st.session_state.vitaldaten)
         st.session_state.vital_form_aktiv = False
         st.success("Gespeichert!")
         st.rerun()
@@ -1573,6 +1720,7 @@ if True:
                 [st.session_state.vitaldaten, neue_zeilen],
                 ignore_index=True,
             )
+            _speichere_nutzer_df("vitaldaten", st.session_state.vitaldaten)
             st.session_state.vital_import_aktiv = False
             st.success(f"{len(neue_zeilen)} Zeilen importiert!")
             st.rerun()
@@ -1755,10 +1903,7 @@ if True:
       if uebung_save:
         u_bild_data_uri = ""
         if u_bild_upload is not None:
-          u_bild_b64 = base64.b64encode(u_bild_upload.getvalue()).decode(
-              "utf-8"
-          )
-          u_bild_data_uri = f"data:{u_bild_upload.type};base64,{u_bild_b64}"
+          u_bild_data_uri = _bild_datei_zu_data_uri(u_bild_upload)
 
         neue_uebung = pd.DataFrame(
             [{
@@ -1776,6 +1921,9 @@ if True:
         st.session_state.eigene_uebungen = pd.concat(
             [st.session_state.eigene_uebungen, neue_uebung],
             ignore_index=True,
+        )
+        _speichere_nutzer_df(
+            "eigene_uebungen", st.session_state.eigene_uebungen
         )
         st.session_state.eigene_uebung_form_aktiv = False
         st.success("Gespeichert!")
@@ -1879,6 +2027,9 @@ if True:
             st.session_state.eigene_uebungen = pd.concat(
                 [st.session_state.eigene_uebungen, neue_zeilen],
                 ignore_index=True,
+            )
+            _speichere_nutzer_df(
+                "eigene_uebungen", st.session_state.eigene_uebungen
             )
             st.session_state.eigene_uebung_import_aktiv = False
             st.success(f"{len(neue_zeilen)} Zeilen importiert!")
@@ -2192,8 +2343,7 @@ if True:
       if arsenal_submitted:
         bild_data_uri = ""
         if bild_upload is not None:
-          bild_b64 = base64.b64encode(bild_upload.getvalue()).decode("utf-8")
-          bild_data_uri = f"data:{bild_upload.type};base64,{bild_b64}"
+          bild_data_uri = _bild_datei_zu_data_uri(bild_upload)
 
         neuer_link = pd.DataFrame(
             [{
@@ -2208,6 +2358,7 @@ if True:
         st.session_state.arsenal = pd.concat(
             [st.session_state.arsenal, neuer_link], ignore_index=True
         )
+        _speichere_nutzer_df("arsenal", st.session_state.arsenal)
         st.session_state.arsenal_form_aktiv = False
         st.success("Erfolgreich hinzugefügt!")
         st.rerun()
