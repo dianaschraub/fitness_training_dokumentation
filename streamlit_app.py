@@ -696,11 +696,24 @@ if True:
             }
         }
 
-        /* Gewicht-Kacheln: Zahl kleiner, da die Einheit "kg" jetzt im
-           Label steht und nicht mehr hinter der Zahl */
-        div.st-key-gewicht_heute_metric [data-testid="stMetricValue"],
-        div.st-key-gewicht_woche_metric [data-testid="stMetricValue"] {
+        /* Vitalwerte-Kacheln: einheitlich kleinere, zentrierte Zahlen -
+           und das Label darf vollständig umbrechen statt abgeschnitten
+           zu werden ("Gewicht heute i...") */
+        div.st-key-vitalcard [data-testid="stMetric"] {
+            text-align: center;
+        }
+        div.st-key-vitalcard [data-testid="stMetricValue"] {
             font-size: 1.4rem !important;
+            text-align: center;
+        }
+        div.st-key-vitalcard [data-testid="stMetricLabel"] {
+            justify-content: center;
+        }
+        div.st-key-vitalcard [data-testid="stMetricLabel"] p {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            text-align: center;
         }
         </style>
         """,
@@ -1295,19 +1308,17 @@ if True:
           else "–",
       )
     with m_col3:
-      with st.container(key="gewicht_heute_metric"):
-        st.metric(
-            "Gewicht heute in kg",
-            f"{gewicht_heute:.1f}" if gewicht_heute is not None else "–",
-        )
+      st.metric(
+          "Gewicht heute in kg",
+          f"{gewicht_heute:.1f}" if gewicht_heute is not None else "–",
+      )
     with m_col4:
-      with st.container(key="gewicht_woche_metric"):
-        st.metric(
-            "Ø Gewicht (Woche) in kg",
-            f"{gewicht_woche_avg:.1f}"
-            if gewicht_woche_avg is not None
-            else "–",
-        )
+      st.metric(
+          "Ø Gewicht (Woche) in kg",
+          f"{gewicht_woche_avg:.1f}"
+          if gewicht_woche_avg is not None
+          else "–",
+      )
     with m_col5:
       st.metric(
           "BMI", f"{bmi_wert:.1f}" if bmi_wert is not None else "–"
