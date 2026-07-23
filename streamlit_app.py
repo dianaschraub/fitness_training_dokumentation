@@ -710,16 +710,26 @@ if True:
 
         /* Vitalwerte-Kacheln: einheitlich kleinere, zentrierte Zahlen -
            und das Label darf vollständig umbrechen statt abgeschnitten
-           zu werden ("Gewicht heute i...") */
+           zu werden ("Gewicht heute i..."). Label und Wert werden hier
+           beide zwangsweise auf Flex+justify-content:center gesetzt
+           (statt uns auf Streamlits eigenes display:grid/block und
+           text-align zu verlassen) - sonst können Label und Zahl je
+           nach Streamlit-Version unterschiedlich breite Boxen bekommen
+           und stehen dann nicht wirklich auf derselben Mittelachse. */
         div.st-key-vitalcard [data-testid="stMetric"] {
-            text-align: center;
+            width: 100% !important;
+        }
+        div.st-key-vitalcard [data-testid="stMetricValue"],
+        div.st-key-vitalcard [data-testid="stMetricLabel"] {
+            display: flex !important;
+            width: 100% !important;
+            justify-content: center !important;
+            text-align: center !important;
         }
         div.st-key-vitalcard [data-testid="stMetricValue"] {
             font-size: 1.4rem !important;
-            text-align: center;
         }
         div.st-key-vitalcard [data-testid="stMetricLabel"] {
-            justify-content: center;
             align-items: flex-end;
             /* Feste Mindesthöhe (Platz für 2 Zeilen), damit kurze Labels
                ("BMI") und lange, umgebrochene Labels ("Ø Gewicht (Woche)
@@ -732,6 +742,7 @@ if True:
             overflow: visible !important;
             text-overflow: unset !important;
             text-align: center;
+            width: 100%;
         }
         </style>
         """,
@@ -1258,9 +1269,9 @@ if True:
       return None
     return treffer[spalte].dropna().iloc[-1]
 
-  def _vital_zeitraum_avg(spalte, zeitraum):
+  def _vital_zeitraum_df(zeitraum):
     if vital_df.empty:
-      return None
+      return vital_df
     if zeitraum == "Woche":
       zeitraum_df = vital_df[
           (vital_df["Datum"] >= str(start_der_woche))
@@ -1275,7 +1286,10 @@ if True:
       }[zeitraum]
       stichtag = str(heute - datetime.timedelta(days=zeitraum_tage))
       zeitraum_df = vital_df[vital_df["Datum"] >= stichtag]
-    werte = zeitraum_df[spalte].dropna()
+    return zeitraum_df.sort_values("Datum")
+
+  def _vital_zeitraum_avg(spalte, zeitraum):
+    werte = _vital_zeitraum_df(zeitraum)[spalte].dropna()
     if werte.empty:
       return None
     return werte.mean()
@@ -1302,16 +1316,32 @@ if True:
   with st.container(key="vitalcard"):
     st.subheader("📊 Vitalwerte")
 
-    groesse_input = st.number_input(
-        "Körpergröße (cm) – einmalig für BMI-Berechnung",
-        min_value=0,
-        max_value=250,
-        value=st.session_state.koerpergroesse_cm,
-        key="groesse_input",
-    )
-    st.session_state.koerpergroesse_cm = (
-        groesse_input if groesse_input else None
-    )
+    if st.session_state.koerpergroesse_cm is None:
+      groesse_input = st.number_input(
+          "Körpergröße (cm) – einmalig für BMI-Berechnung",
+          min_value=0,
+          max_value=250,
+          value=None,
+          key="groesse_input",
+      )
+      if groesse_input:
+        st.session_state.koerpergroesse_cm = groesse_input
+        st.rerun()
+    else:
+      with st.expander(
+          f"Körpergröße: {st.session_state.koerpergroesse_cm:.0f} cm "
+          "(ändern)"
+      ):
+        groesse_input = st.number_input(
+            "Körpergröße (cm) – einmalig für BMI-Berechnung",
+            min_value=0,
+            max_value=250,
+            value=st.session_state.koerpergroesse_cm,
+            key="groesse_input",
+        )
+        st.session_state.koerpergroesse_cm = (
+            groesse_input if groesse_input else None
+        )
 
     bmi_wert = None
     if gewicht_heute and st.session_state.koerpergroesse_cm:
@@ -1363,6 +1393,34 @@ if True:
             "VO2max (aktuell)",
             f"{vo2max_aktuell:.1f}" if vo2max_aktuell is not None else "–",
         )
+
+    st.write("")
+    st.markdown(f"#### 📈 Verlauf ({zeitraum_auswahl})")
+    verlauf_df = _vital_zeitraum_df(zeitraum_auswahl)
+    if verlauf_df.empty:
+      st.info("Noch keine Einträge für diesen Zeitraum.")
+    else:
+      chart_col1, chart_col2 = st.columns(2)
+      with chart_col1:
+        st.caption("Schritte")
+        schritte_verlauf = verlauf_df.dropna(subset=["Schritte"])
+        if schritte_verlauf.empty:
+          st.info("Keine Schritte-Einträge in diesem Zeitraum.")
+        else:
+          st.line_chart(
+              schritte_verlauf.set_index("Datum")["Schritte"],
+              height=220,
+          )
+      with chart_col2:
+        st.caption("Gewicht (kg)")
+        gewicht_verlauf = verlauf_df.dropna(subset=["Gewicht"])
+        if gewicht_verlauf.empty:
+          st.info("Keine Gewicht-Einträge in diesem Zeitraum.")
+        else:
+          st.line_chart(
+              gewicht_verlauf.set_index("Datum")["Gewicht"],
+              height=220,
+          )
 
     st.write("")
     col_v1, col_v2 = st.columns(2)
