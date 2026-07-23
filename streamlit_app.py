@@ -1407,13 +1407,77 @@ if True:
 
   st.write("---")
   st.write("### 📒 Ergänzende Trainingsnotizen")
+
+  UEBUNG_UNTERKATEGORIEN = {
+      "Ausdauer": AUSDAUER_UNTERKATEGORIEN,
+      "Kraft": KRAFT_UNTERKATEGORIEN,
+      "Beweglichkeit": BEWEGLICHKEIT_UNTERKATEGORIEN,
+      "Balance": BALANCE_UNTERKATEGORIEN,
+      "Ernährung": ERNAEHRUNG_UNTERKATEGORIEN,
+      "Gesamtbefinden": GESAMTBEFINDEN_UNTERKATEGORIEN,
+  }
+
   tab_protokoll, tab_uebungen = st.tabs(
       ["Tagebuch-Einträge", "Eigene Übungen (Name, Sätze, Wiederholungen, Dauer)"]
   )
 
   with tab_protokoll:
     if not df.empty:
-      st.dataframe(df, use_container_width=True)
+      st.markdown("#### 🔍 Tagebuch filtern")
+      p_col1, p_col2, p_col3 = st.columns(3)
+      with p_col1:
+        p_kategorie = st.selectbox(
+            "Kategorie", ["Alle Kategorien"] + ARSENAL_KATEGORIEN,
+            key="protokoll_filter_kategorie",
+        )
+      with p_col2:
+        if p_kategorie == "Alle Kategorien":
+          p_unterkategorie_optionen = sorted(
+              df["Unterkategorie"].dropna().unique().tolist()
+          )
+        else:
+          p_unterkategorie_optionen = UEBUNG_UNTERKATEGORIEN.get(
+              p_kategorie, []
+          )
+        p_unterkategorie = st.selectbox(
+            "Unterkategorie",
+            ["Alle Unterkategorien"] + list(p_unterkategorie_optionen),
+            key="protokoll_filter_unterkategorie",
+        )
+      with p_col3:
+        p_zeitraum = st.selectbox(
+            "Zeitraum",
+            ["Alle", "Heute", "Letzte Woche", "Letzter Monat",
+             "Letzte 3 Monate", "Letztes Jahr"],
+            key="protokoll_filter_zeitraum",
+        )
+
+      gefilterter_df = df.copy()
+      if p_kategorie != "Alle Kategorien":
+        gefilterter_df = gefilterter_df[
+            gefilterter_df["Kategorie"] == p_kategorie
+        ]
+      if p_unterkategorie != "Alle Unterkategorien":
+        gefilterter_df = gefilterter_df[
+            gefilterter_df["Unterkategorie"] == p_unterkategorie
+        ]
+      if p_zeitraum == "Heute":
+        gefilterter_df = gefilterter_df[gefilterter_df["Datum"] == str(heute)]
+      elif p_zeitraum != "Alle":
+        zeitraum_tage = {
+            "Letzte Woche": 7,
+            "Letzter Monat": 30,
+            "Letzte 3 Monate": 90,
+            "Letztes Jahr": 365,
+        }[p_zeitraum]
+        stichtag = str(heute - datetime.timedelta(days=zeitraum_tage))
+        gefilterter_df = gefilterter_df[gefilterter_df["Datum"] >= stichtag]
+
+      st.caption(f"{len(gefilterter_df)} von {len(df)} Einträgen")
+      st.dataframe(
+          gefilterter_df.sort_values("Datum", ascending=False),
+          use_container_width=True,
+      )
 
       @st.cache_data
       def convert_df_to_excel(dataframe):
@@ -1424,7 +1488,7 @@ if True:
           dataframe.to_excel(writer, index=False, sheet_name="Protokoll")
         return output.getvalue()
 
-      excel_data = convert_df_to_excel(df)
+      excel_data = convert_df_to_excel(gefilterter_df)
       st.download_button(
           label="📥 Als Excel-Datei herunterladen",
           data=excel_data,
@@ -1439,15 +1503,6 @@ if True:
         "Alle Übungen an einem Ort: Kategorie, Unterkategorie, Sätze/"
         " Wiederholungen, Dauer, Notizen, Link und Bild."
     )
-
-    UEBUNG_UNTERKATEGORIEN = {
-        "Ausdauer": AUSDAUER_UNTERKATEGORIEN,
-        "Kraft": KRAFT_UNTERKATEGORIEN,
-        "Beweglichkeit": BEWEGLICHKEIT_UNTERKATEGORIEN,
-        "Balance": BALANCE_UNTERKATEGORIEN,
-        "Ernährung": ERNAEHRUNG_UNTERKATEGORIEN,
-        "Gesamtbefinden": GESAMTBEFINDEN_UNTERKATEGORIEN,
-    }
 
     col_u1, col_u2 = st.columns(2)
     with col_u1:
