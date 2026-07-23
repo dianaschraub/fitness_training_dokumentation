@@ -435,6 +435,22 @@ if "arsenal" not in st.session_state:
               "Beschreibung": "Aufrechte Haltung, Bauchspannung halten",
               "Bild": "",
           },
+          {
+              "Kategorie": "Ausdauer",
+              "Typ": "Text",
+              "Bereich / Übung": "AIMO App",
+              "Link": "",
+              "Beschreibung": "Empfehlenswerte App zur Unterstützung beim Ausdauertraining",
+              "Bild": "",
+          },
+          {
+              "Kategorie": "Kraft",
+              "Typ": "Text",
+              "Bereich / Übung": "AIMO App",
+              "Link": "",
+              "Beschreibung": "Empfehlenswerte App zur Unterstützung beim Krafttraining",
+              "Bild": "",
+          },
       ]
   )
 
@@ -1336,7 +1352,7 @@ if True:
         st.rerun()
 
   st.write("---")
-  st.write("### 📒 Erweiterte Trainingsnotizen")
+  st.write("### 📒 Ergänzende Trainingsnotizen")
   tab_protokoll, tab_uebungen = st.tabs(
       ["Tagebuch-Einträge", "Eigene Übungen (Sätze & Wiederholungen)"]
   )
@@ -1653,6 +1669,77 @@ if True:
                   "Link": st.column_config.LinkColumn("Link"),
               },
           )
+
+      st.write("---")
+      st.markdown("#### 🔍 Trainingsnotizen filtern")
+      f_col1, f_col2, f_col3 = st.columns(3)
+      with f_col1:
+        f_kategorie = st.selectbox(
+            "Kategorie", ["Alle Kategorien"] + uebungen_kategorien,
+            key="uebungen_filter_kategorie",
+        )
+      with f_col2:
+        if f_kategorie == "Alle Kategorien":
+          f_unterkategorie_optionen = sorted(
+              uebungen_df["Unterkategorie"].dropna().unique().tolist()
+          )
+        else:
+          f_unterkategorie_optionen = UEBUNG_UNTERKATEGORIEN.get(
+              f_kategorie, []
+          )
+        f_unterkategorie = st.selectbox(
+            "Unterkategorie",
+            ["Alle Unterkategorien"] + list(f_unterkategorie_optionen),
+            key="uebungen_filter_unterkategorie",
+        )
+      with f_col3:
+        f_zeitraum = st.selectbox(
+            "Zeitraum",
+            ["Alle", "Letzte Woche", "Letzter Monat", "Letztes Jahr"],
+            key="uebungen_filter_zeitraum",
+        )
+
+      gefilterte_df = uebungen_df.copy()
+      if f_kategorie != "Alle Kategorien":
+        gefilterte_df = gefilterte_df[
+            gefilterte_df["Kategorie"] == f_kategorie
+        ]
+      if f_unterkategorie != "Alle Unterkategorien":
+        gefilterte_df = gefilterte_df[
+            gefilterte_df["Unterkategorie"] == f_unterkategorie
+        ]
+      if f_zeitraum != "Alle":
+        zeitraum_tage = {
+            "Letzte Woche": 7,
+            "Letzter Monat": 30,
+            "Letztes Jahr": 365,
+        }[f_zeitraum]
+        stichtag = str(heute - datetime.timedelta(days=zeitraum_tage))
+        gefilterte_df = gefilterte_df[gefilterte_df["Datum"] >= stichtag]
+
+      st.caption(f"{len(gefilterte_df)} von {len(uebungen_df)} Einträgen")
+      if gefilterte_df.empty:
+        st.info("Keine Einträge für die gewählten Filter gefunden.")
+      else:
+        f_anzeige_spalten = [
+            c
+            for c in [
+                "Datum", "Kategorie", "Unterkategorie", "Dauer (Min.)",
+                "Sätze", "Wiederholungen", "Notizen", "Link", "Bild",
+            ]
+            if c in gefilterte_df.columns
+        ]
+        st.dataframe(
+            gefilterte_df[f_anzeige_spalten].sort_values(
+                "Datum", ascending=False
+            ),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Bild": st.column_config.ImageColumn("Bild"),
+                "Link": st.column_config.LinkColumn("Link"),
+            },
+        )
 
       st.write("")
 
