@@ -322,6 +322,9 @@ if "protokoll" not in st.session_state:
           "Minuten",
           "Status",
           "Notizen",
+          "Verknüpfte Übung",
+          "Verknüpfter Link",
+          "Verknüpftes Bild",
       ]
   )
 
@@ -987,6 +990,34 @@ if True:
           "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
       )
 
+    verknuepfte_uebung = ""
+    verknuepfter_link = ""
+    verknuepftes_bild = ""
+    passende_arsenal_eintraege = st.session_state.arsenal[
+        st.session_state.arsenal["Kategorie"] == selected_cat
+    ]
+    if not passende_arsenal_eintraege.empty:
+      arsenal_optionen = ["Keine Auswahl"] + passende_arsenal_eintraege[
+          "Bereich / Übung"
+      ].tolist()
+      gewaehlte_uebung = st.selectbox(
+          "🔗 Aus Übungsarsenal wählen (optional)", arsenal_optionen,
+          key="entry_arsenal_auswahl",
+      )
+      if gewaehlte_uebung != "Keine Auswahl":
+        arsenal_eintrag = passende_arsenal_eintraege[
+            passende_arsenal_eintraege["Bereich / Übung"] == gewaehlte_uebung
+        ].iloc[0]
+        verknuepfte_uebung = gewaehlte_uebung
+        verknuepfter_link = arsenal_eintrag.get("Link", "") or ""
+        verknuepftes_bild = arsenal_eintrag.get("Bild", "") or ""
+        if arsenal_eintrag.get("Beschreibung"):
+          st.caption(arsenal_eintrag["Beschreibung"])
+        if verknuepfter_link:
+          st.markdown(f"🔗 [{verknuepfter_link}]({verknuepfter_link})")
+        if verknuepftes_bild:
+          st.image(verknuepftes_bild, use_container_width=True)
+
     datum = st.date_input("Datum", value=heute, key="entry_datum")
     notizen = st.text_input("Notizen / Details", key="entry_notizen")
 
@@ -1043,6 +1074,9 @@ if True:
               "Minuten": minuten if minuten is not None else 0,
               "Status": status_wert,
               "Notizen": notizen,
+              "Verknüpfte Übung": verknuepfte_uebung,
+              "Verknüpfter Link": verknuepfter_link,
+              "Verknüpftes Bild": verknuepftes_bild,
           }]
       )
       st.session_state.protokoll = pd.concat(
@@ -1498,6 +1532,14 @@ if True:
       st.dataframe(
           gefilterter_df.sort_values("Datum", ascending=False),
           use_container_width=True,
+          column_config={
+              "Verknüpftes Bild": st.column_config.ImageColumn(
+                  "Verknüpftes Bild"
+              ),
+              "Verknüpfter Link": st.column_config.LinkColumn(
+                  "Verknüpfter Link"
+              ),
+          },
       )
 
       @st.cache_data
