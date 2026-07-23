@@ -689,10 +689,22 @@ if True:
             div.st-key-uebungen_filter_row div[data-testid="stHorizontalBlock"] {
                 flex-wrap: wrap !important;
             }
-            div.st-key-wd_details_row div[data-testid="column"],
-            div.st-key-protokoll_filter_row div[data-testid="column"],
-            div.st-key-uebungen_filter_row div[data-testid="column"] {
+            div.st-key-wd_details_row div[data-testid="stColumn"],
+            div.st-key-protokoll_filter_row div[data-testid="stColumn"],
+            div.st-key-uebungen_filter_row div[data-testid="stColumn"] {
                 min-width: 100% !important;
+            }
+
+            /* Vitalwerte-Kennzahlen: auf schmalen Screens als 2er-Raster
+               (3 Reihen) statt 6 in einer viel zu schmalen Reihe */
+            div.st-key-vital_metrics_row div[data-testid="stHorizontalBlock"] {
+                flex-wrap: wrap !important;
+            }
+            div.st-key-vital_metrics_row div[data-testid="stColumn"] {
+                /* 4px Gap zwischen den Spalten mit einrechnen, sonst
+                   passen selbst zwei 50%-Spalten nicht in eine Reihe
+                   und jede Kachel landet einzeln in ihrer eigenen Zeile */
+                min-width: calc(50% - 4px) !important;
             }
         }
 
@@ -708,6 +720,12 @@ if True:
         }
         div.st-key-vitalcard [data-testid="stMetricLabel"] {
             justify-content: center;
+            align-items: flex-end;
+            /* Feste Mindesthöhe (Platz für 2 Zeilen), damit kurze Labels
+               ("BMI") und lange, umgebrochene Labels ("Ø Gewicht (Woche)
+               in kg") gleich hoch sind - sonst stehen die Zahlen
+               darunter nicht auf einer Höhe. */
+            min-height: 2.6rem;
         }
         div.st-key-vitalcard [data-testid="stMetricLabel"] p {
             white-space: normal !important;
@@ -1292,42 +1310,43 @@ if True:
       groesse_m = st.session_state.koerpergroesse_cm / 100
       bmi_wert = gewicht_heute / (groesse_m**2)
 
-    m_col1, m_col2, m_col3, m_col4, m_col5, m_col6 = st.columns(6)
-    with m_col1:
-      st.metric(
-          "Schritte heute",
-          f"{int(schritte_heute):,}".replace(",", ".")
-          if schritte_heute is not None
-          else "–",
-      )
-    with m_col2:
-      st.metric(
-          "Ø Schritte/Tag (Woche)",
-          f"{int(schritte_woche_avg):,}".replace(",", ".")
-          if schritte_woche_avg is not None
-          else "–",
-      )
-    with m_col3:
-      st.metric(
-          "Gewicht heute in kg",
-          f"{gewicht_heute:.1f}" if gewicht_heute is not None else "–",
-      )
-    with m_col4:
-      st.metric(
-          "Ø Gewicht (Woche) in kg",
-          f"{gewicht_woche_avg:.1f}"
-          if gewicht_woche_avg is not None
-          else "–",
-      )
-    with m_col5:
-      st.metric(
-          "BMI", f"{bmi_wert:.1f}" if bmi_wert is not None else "–"
-      )
-    with m_col6:
-      st.metric(
-          "VO2max (aktuell)",
-          f"{vo2max_aktuell:.1f}" if vo2max_aktuell is not None else "–",
-      )
+    with st.container(key="vital_metrics_row"):
+      m_col1, m_col2, m_col3, m_col4, m_col5, m_col6 = st.columns(6)
+      with m_col1:
+        st.metric(
+            "Schritte heute",
+            f"{int(schritte_heute):,}".replace(",", ".")
+            if schritte_heute is not None
+            else "–",
+        )
+      with m_col2:
+        st.metric(
+            "Ø Schritte/Tag (Woche)",
+            f"{int(schritte_woche_avg):,}".replace(",", ".")
+            if schritte_woche_avg is not None
+            else "–",
+        )
+      with m_col3:
+        st.metric(
+            "Gewicht heute in kg",
+            f"{gewicht_heute:.1f}" if gewicht_heute is not None else "–",
+        )
+      with m_col4:
+        st.metric(
+            "Ø Gewicht (Woche) in kg",
+            f"{gewicht_woche_avg:.1f}"
+            if gewicht_woche_avg is not None
+            else "–",
+        )
+      with m_col5:
+        st.metric(
+            "BMI", f"{bmi_wert:.1f}" if bmi_wert is not None else "–"
+        )
+      with m_col6:
+        st.metric(
+            "VO2max (aktuell)",
+            f"{vo2max_aktuell:.1f}" if vo2max_aktuell is not None else "–",
+        )
 
     st.write("")
     col_v1, col_v2 = st.columns(2)
