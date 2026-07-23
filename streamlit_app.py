@@ -971,6 +971,36 @@ if True:
     datum = st.date_input("Datum", value=heute, key="entry_datum")
     notizen = st.text_input("Notizen / Details", key="entry_notizen")
 
+    weitere_details_aktiv = st.checkbox(
+        "➕ Weitere Details (Sätze, Wiederholungen, Dauer, Link, Bild)",
+        key="entry_weitere_details_toggle",
+    )
+    wd_dauer = wd_saetze = wd_wiederholungen = None
+    wd_link = ""
+    wd_bild_upload = None
+    if weitere_details_aktiv:
+      wd_col1, wd_col2, wd_col3 = st.columns(3)
+      with wd_col1:
+        wd_dauer = st.number_input(
+            "Dauer (Minuten)", min_value=0, max_value=300, value=None,
+            key="entry_wd_dauer",
+        )
+      with wd_col2:
+        wd_saetze = st.number_input(
+            "Sätze", min_value=0, max_value=50, value=None,
+            key="entry_wd_saetze",
+        )
+      with wd_col3:
+        wd_wiederholungen = st.number_input(
+            "Wiederholungen", min_value=0, max_value=1000, value=None,
+            key="entry_wd_wiederholungen",
+        )
+      wd_link = st.text_input("Link – optional", key="entry_wd_link")
+      wd_bild_upload = st.file_uploader(
+          "Bild – optional", type=["png", "jpg", "jpeg"],
+          key="entry_wd_bild",
+      )
+
     col_s1, col_s2 = st.columns(2)
     with col_s1:
       save_btn = st.button(
@@ -998,6 +1028,30 @@ if True:
       st.session_state.protokoll = pd.concat(
           [st.session_state.protokoll, neuer_eintrag], ignore_index=True
       )
+      if weitere_details_aktiv:
+        wd_bild_data_uri = ""
+        if wd_bild_upload is not None:
+          wd_bild_b64 = base64.b64encode(wd_bild_upload.getvalue()).decode(
+              "utf-8"
+          )
+          wd_bild_data_uri = f"data:{wd_bild_upload.type};base64,{wd_bild_b64}"
+        neue_uebung = pd.DataFrame(
+            [{
+                "Datum": str(datum),
+                "Kategorie": selected_cat,
+                "Unterkategorie": selected_unterkat,
+                "Dauer (Min.)": wd_dauer,
+                "Sätze": wd_saetze,
+                "Wiederholungen": wd_wiederholungen,
+                "Notizen": notizen,
+                "Link": wd_link.strip(),
+                "Bild": wd_bild_data_uri,
+            }]
+        )
+        st.session_state.eigene_uebungen = pd.concat(
+            [st.session_state.eigene_uebungen, neue_uebung],
+            ignore_index=True,
+        )
       st.session_state.eintrag_modal_aktiv = False
       st.success("Eintrag erfolgreich gespeichert!")
       st.rerun()
@@ -1354,7 +1408,7 @@ if True:
   st.write("---")
   st.write("### 📒 Ergänzende Trainingsnotizen")
   tab_protokoll, tab_uebungen = st.tabs(
-      ["Tagebuch-Einträge", "Eigene Übungen (Sätze & Wiederholungen)"]
+      ["Tagebuch-Einträge", "Eigene Übungen (Name, Sätze, Wiederholungen, Dauer)"]
   )
 
   with tab_protokoll:
