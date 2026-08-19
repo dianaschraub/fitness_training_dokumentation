@@ -1,593 +1,2367 @@
-
-
-Eingefügter Text(1).txt
-Dokument
-
-Der Fehler kommt nicht vom Gedankenstrich selbst, sondern davon, dass ein deutscher Antworttext in deine Python-Datei geraten ist.
-
-Bitte ersetze den gesamten Inhalt deiner bisherigen app.py durch diese bereinigte Datei:
-
-app.py herunterladen
-
-Wichtig: Nur den Dateiinhalt übernehmen – keine Erklärungstexte und keine Markdown-Zeichen wie ``` mitkopieren. Die neue Datei wurde erfolgreich auf Python-Syntax geprüft.
-
-
-app.py
-Code
-
-
-Screenshot_2026-08-19-15-19-26-645_com.android.chrome.jpg
-Schau mal da sind viele Buchstaben komisch geschrieben und nicht richtig angezeigt und Neben dem Schüler sollte direkt das Konzertprogramm stehen und ganz rechts dann überhaupt der nächste Schüler der kommt 
-
-Ich habe beides korrigiert:
-
-Umlaute werden jetzt zuverlässig als „Schüler“, „Übersicht“, „benötigt“ usw. angezeigt.
-
-Kartenreihenfolge: aktueller Schüler → Konzertprogramm → nächster Schüler.
-
-Beim Konzertprogramm erscheint direkt das hinterlegte Konzertstück des aktuellen Schülers.
-
-Bitte ersetze deine bisherige Datei vollständig durch diese neue Version:
-
-app.py herunterladen
-
-Danach die Streamlit-App neu starten beziehungsweise neu bereitstellen und die Seite im Browser aktualisieren.
-
-
-app.py
-Code
-
-
-Und cloudlink reicht ssd bitte löschen
-
-
-Prüfe auch noch mal ob links diese schmale Leiste erscheint mit allen Schülern die nacheinander zu sehen sind also untereinander die die noch kommen und ganz am Ende eben Feierabend steht 
-
-Geprüft und ergänzt:
-
-Aktueller und kommende Schüler stehen links untereinander.
-
-Anfangs- und Endzeiten werden angezeigt.
-
-Vergangene Schüler verschwinden automatisch.
-
-Lücken erscheinen als „Pause · 30 Min.“
-
-Ganz unten steht dauerhaft „Feierabend“ mit der Endzeit.
-
-Danach erscheint: „Auch der Flügel hat jetzt frei.“
-
-Aktualisierte app.py herunterladen
-
-Momentan erscheint noch der Platzhalter, weil der Google Kalender noch nicht verbunden ist. Erst danach kann die Leiste deine wirklichen Termine anzeigen.
-
-
-app.py
-Code
-
-
-Bibliothek
-/
-app.py
-
-
-# Klavierlehrer Live-Cockpit
-import streamlit as st
-import pandas as pd
+import base64
+import math
 import datetime
-import html
-import plotly.express as px
-from zoneinfo import ZoneInfo
-from fpdf import FPDF
-import urllib.parse
+from io import BytesIO
+import altair as alt
+import gspread
+import pandas as pd
+import streamlit as st
+from google.oauth2.service_account import Credentials
+from PIL import Image
 
-# --- SETUP & DESIGN-KONFIGURATION ---
-st.set_page_config(page_title="Klavierlehrer Cockpit", layout="wide", page_icon="\U0001F3B9")
-
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
-    :root {
-        --navy: #17243b;
-        --navy-soft: #253653;
-        --gold: #b8954b;
-        --gold-light: #e6d4a7;
-        --ivory: #f7f4ed;
-        --paper: #fffdf8;
-        --ink: #263247;
-        --muted: #687386;
-        --line: #e6dfd1;
-    }
-    .stApp {
-        background: linear-gradient(145deg, #f7f4ed 0%, #fbfaf6 55%, #f1ede4 100%);
-        color: var(--ink);
-        font-family: 'DM Sans', sans-serif;
-    }
-    .block-container { max-width: 1280px; padding-top: 1.4rem; padding-bottom: 3rem; }
-    h1, h2, h3 { font-family: 'Playfair Display', serif !important; color: var(--navy) !important; }
-    [data-baseweb="tab-list"] {
-        gap: 8px; background: rgba(255,255,255,.72); padding: 7px;
-        border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 8px 24px rgba(23,36,59,.06);
-    }
-    [data-baseweb="tab"] { border-radius: 9px; padding: 10px 18px; font-weight: 650; }
-    [data-baseweb="tab"][aria-selected="true"] { background: var(--navy) !important; color: white !important; }
-    .stButton>button {
-        border-radius: 10px; font-weight: 700; border: 1px solid var(--navy);
-        background: var(--navy); color: white; min-height: 44px;
-        box-shadow: 0 5px 14px rgba(23,36,59,.14); transition: .18s ease;
-    }
-    .stButton>button:hover { background: var(--navy-soft); color: white; border-color: var(--gold); transform: translateY(-1px); }
-    [data-testid="stTextInput"] input, [data-testid="stTextArea"] textarea,
-    [data-testid="stNumberInput"] input, [data-baseweb="select"] > div {
-        background: rgba(255,255,255,.88); border-color: #d9d1c2; border-radius: 9px;
-    }
-    .hero {
-        background: linear-gradient(125deg, #17243b 0%, #263955 75%, #344967 100%);
-        color: white; padding: 26px 30px; border-radius: 18px; margin-bottom: 18px;
-        box-shadow: 0 15px 35px rgba(23,36,59,.18); position: relative; overflow: hidden;
-    }
-    .hero:after { content:'\u266A'; position:absolute; right:28px; top:-28px; font-size:130px; color:rgba(230,212,167,.12); }
-    .hero-kicker { color: var(--gold-light); text-transform: uppercase; letter-spacing: .14em; font-size: 12px; font-weight: 700; }
-    .hero-title { font-family:'Playfair Display',serif; font-size: 34px; font-weight: 700; margin: 4px 0; }
-    .hero-subtitle { color: #dfe5ec; margin: 0; font-size: 15px; }
-    .metric-card {
-        background: rgba(255,253,248,.95); padding: 18px 20px; border-radius: 13px;
-        border: 1px solid var(--line); border-left: 4px solid var(--gold); margin-bottom: 20px;
-        box-shadow: 0 8px 22px rgba(23,36,59,.06);
-    }
-    .section-card { background:rgba(255,253,248,.78); border:1px solid var(--line); border-radius:14px; padding:5px 18px 15px; margin:12px 0 18px; }
-    .section-head { margin: 30px 0 13px; }
-    .section-kicker { color: var(--gold); text-transform: uppercase; letter-spacing: .12em; font-size: 11px; font-weight: 800; }
-    .section-title { color: var(--navy); font-family:'Playfair Display',serif; font-size: 24px; font-weight:700; margin:1px 0 2px; }
-    .section-copy { color: var(--muted); font-size: 14px; margin:0; }
-    .summary-card {
-        min-height: 126px; background: rgba(255,253,248,.92); border:1px solid var(--line);
-        border-radius:14px; padding:17px 18px; box-shadow:0 7px 18px rgba(23,36,59,.055);
-    }
-    .summary-label { color:var(--muted); text-transform:uppercase; letter-spacing:.09em; font-size:10px; font-weight:800; }
-    .summary-value { color:var(--navy); font-family:'Playfair Display',serif; font-size:23px; font-weight:700; margin:7px 0 3px; }
-    .summary-note { color:var(--muted); font-size:12px; line-height:1.35; }
-    .save-panel {
-        background:linear-gradient(125deg,#17243b,#283b58); color:white; padding:20px 22px;
-        border-radius:15px; margin-top:26px; box-shadow:0 12px 28px rgba(23,36,59,.16);
-    }
-    .save-panel-title { font-family:'Playfair Display',serif; font-size:21px; font-weight:700; }
-    .save-panel-copy { color:#dbe2eb; font-size:13px; margin-top:3px; }
-    [data-testid="stSidebar"] { background:#e8edf4; border-right:1px solid #d5dce6; }
-    [data-testid="stSidebar"] .block-container { padding-top:1.8rem; }
-    [data-testid="stSidebar"] h2 { font-size:22px; }
-    .day-label { color:#687386; text-transform:uppercase; letter-spacing:.12em; font-size:10px; font-weight:800; }
-    .day-title { color:#17243b; font-family:'Playfair Display',serif; font-size:24px; font-weight:700; margin:2px 0 3px; }
-    .day-date { color:#687386; font-size:12px; margin-bottom:17px; }
-    .day-rail { position:relative; margin:8px 0 20px; }
-    .day-rail:before { content:''; position:absolute; left:9px; top:8px; bottom:8px; width:2px; background:#c3ccd8; }
-    .rail-entry { position:relative; padding-left:29px; margin:0 0 12px; }
-    .rail-dot { position:absolute; left:3px; top:17px; width:14px; height:14px; border-radius:50%; background:#fff; border:3px solid #8b98aa; z-index:1; }
-    .rail-card { background:rgba(255,255,255,.78); border:1px solid #d5dce6; border-radius:10px; padding:10px 11px; }
-    .rail-time { color:#687386; font-size:10px; font-weight:800; letter-spacing:.03em; }
-    .rail-name { color:#263247; font-size:14px; font-weight:750; margin-top:2px; }
-    .rail-entry.active .rail-dot { background:#b8954b; border-color:#17243b; box-shadow:0 0 0 4px rgba(184,149,75,.22); }
-    .rail-entry.active .rail-card { background:#17243b; border-color:#17243b; box-shadow:0 7px 17px rgba(23,36,59,.16); }
-    .rail-entry.active .rail-time { color:#e6d4a7; }
-    .rail-entry.active .rail-name { color:#fff; }
-    .rail-entry.finish .rail-dot { background:#b8954b; border-color:#b8954b; }
-    .rail-entry.finish .rail-card { background:#f6ecd4; border-color:#d8bd7e; }
-    .rail-entry.finish .rail-time { color:#8b6c2f; }
-    .rail-entry.finish .rail-name { color:#17243b; }
-    .rail-entry.past { opacity:.53; }
-    .rail-gap { position:relative; margin:0 0 12px 29px; color:#687386; font-size:10px; font-weight:700; }
-    .rail-gap span { background:#dbe2eb; border-radius:20px; padding:4px 8px; }
-    .rail-empty { background:rgba(255,255,255,.62); border:1px dashed #aeb9c7; border-radius:10px; padding:12px; color:#687386; font-size:12px; }
-    [data-testid="stMetric"] {
-        background:rgba(255,253,248,.9); border:1px solid var(--line); padding:15px 17px;
-        border-radius:12px; box-shadow:0 6px 16px rgba(23,36,59,.045);
-    }
-    /* Edle Box f\u00FCr das Lobk\u00E4rtchen */
-    .lob-box {
-        background: linear-gradient(135deg, #fffdf7 0%, #f5ead0 100%);
-        border: 1px solid var(--gold); padding: 18px; border-radius: 14px;
-        box-shadow: 0 8px 22px rgba(184,149,75,.15);
-        max-width: 650px;
-        margin: 20px auto;
-    }
-    hr { border-color: var(--line) !important; }
-    div[data-testid="stProgress"] > div > div { background-color: var(--gold); }
-    @media (max-width: 900px) {
-        .block-container { padding-left: 1rem; padding-right: 1rem; padding-top: 1rem; }
-        .hero { padding: 22px 20px; border-radius: 14px; }
-        .hero-title { font-size: 28px; }
-        .hero:after { font-size: 95px; right: 14px; }
-        .summary-card { min-height: 116px; padding: 14px; }
-        .summary-value { font-size: 19px; }
-        [data-baseweb="tab"] { padding: 9px 11px; font-size: 13px; }
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# --- KONZERT-DATUM ---
-KONZERT_DATUM = datetime.date(2026, 9, 2)
-
-def berechne_konzert_countdown():
-    heute = datetime.date.today()
-    delta = KONZERT_DATUM - heute
-    tage = delta.days
-    if tage > 0:
-        wochen = tage // 7
-        rest_tage = tage % 7
-        return f"Noch {wochen} Wochen und {rest_tage} Tage"
-    elif tage == 0:
-        return "Heute ist das Klassenvorspiel!"
-    else:
-        return "Das Vorspiel ist bereits vorbei"
-
-def berechne_fortschritt_unterricht(start_minute=0, dauer=45):
-    """Platzhalter f\u00FCr die sp\u00E4tere automatische Kalender-/Zeiterkennung."""
-    return min(max(start_minute / dauer, 0.0), 1.0)
-
-def abschnitt(kicker, titel, beschreibung):
-    st.markdown(
-        f"""
-        <div class="section-head">
-            <div class="section-kicker">{kicker}</div>
-            <div class="section-title">{titel}</div>
-            <p class="section-copy">{beschreibung}</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# --- DATEN-LOGIK ---
-def lade_archiv_aus_sheet():
-    daten = {
-        'Schueler': ['Emma', 'Max', 'Lina'],
-        'Stueck': ['Sonatine Opus 36', 'F\u00FCr Elise', 'Inventio 1'],
-        'Konzertstueck': ['Sonatine 1. Satz', 'F\u00FCr Elise', 'Inventio 1'],
-        'Dauer_Minuten': [45, 60, 30],
-        'Schwierigkeit': [3, 4, 2],
-        'K\u00E4rtchen_Erhalten': ['Ja', 'Nein', 'Ja'],
-        'Grund': ['Toller Rhythmus im Takt 12', '', 'Wundersch\u00F6ne Dynamik'],
-        'Bis_Naechsten_Mal': ['Takt 15-20 langsam \u00FCben', 'Pedalwechsel weicher gestalten', 'Rhythmus klatschen']
-    }
-    return pd.DataFrame(daten)
-
-def hole_konzertprogramm(student, archiv):
-    auswahl = archiv.loc[archiv["Schueler"] == student, "Konzertstueck"].dropna()
-    auswahl = [str(stueck).strip() for stueck in auswahl if str(stueck).strip()]
-    if not auswahl:
-        return "Noch nicht festgelegt"
-    return " \u00B7 ".join(dict.fromkeys(auswahl))
-
-def get_heutige_unterrichtstermine_aus_kalender():
-    """Liefert nach der Google-Anbindung Termine als Name-, Start- und Ende-Dicts."""
-    return None
-
-def finde_aktuellen_und_naechsten_termin(termine, jetzt=None):
-    if not termine:
-        return None, None
-
-    jetzt = jetzt or datetime.datetime.now(ZoneInfo("Europe/Berlin"))
-    sortierte_termine = sorted(termine, key=lambda termin: termin["start"])
-    aktueller_termin = next(
-        (termin for termin in sortierte_termine if termin["start"] <= jetzt < termin["ende"]),
-        None,
-    )
-    naechster_termin = next(
-        (termin for termin in sortierte_termine if termin["start"] > jetzt),
-        None,
-    )
-    return aktueller_termin, naechster_termin
-
-def formatiere_pause(minuten):
-    if minuten >= 60:
-        stunden, rest = divmod(minuten, 60)
-        return f"Pause \u00B7 {stunden} Std. {rest} Min."
-    return f"Pause \u00B7 {minuten} Min."
-
-def erstelle_tagesleisten_html(termine, jetzt=None):
-    if termine is None:
-        return '<div class="rail-empty">Die Tagesleiste erscheint hier, sobald der Google Kalender verbunden ist.</div>'
-
-    if not termine:
-        return '<div class="rail-empty"><strong>Heute keine Termine.</strong><br>Zeit f\u00FCr freie Improvisation.</div>'
-
-    jetzt = jetzt or datetime.datetime.now(ZoneInfo("Europe/Berlin"))
-    sortierte_termine = sorted(termine, key=lambda termin: termin["start"])
-    verbleibende_termine = [termin for termin in sortierte_termine if termin["ende"] > jetzt]
-
-    if not verbleibende_termine:
-        return '<div class="rail-empty"><strong>Feierabend!</strong><br>Auch der Fl\u00FCgel hat jetzt frei.</div>'
-
-    bausteine = ['<div class="day-rail">']
-    erster_termin = verbleibende_termine[0]
-    if erster_termin["start"] > jetzt:
-        minuten_pause = int((erster_termin["start"] - jetzt).total_seconds() // 60)
-        if minuten_pause >= 5:
-            bausteine.append(f'<div class="rail-gap"><span>{formatiere_pause(minuten_pause)}</span></div>')
-
-    vorheriges_ende = None
-    for termin in verbleibende_termine:
-        if vorheriges_ende and termin["start"] > vorheriges_ende:
-            minuten_luecke = int((termin["start"] - vorheriges_ende).total_seconds() // 60)
-            if minuten_luecke >= 5:
-                bausteine.append(f'<div class="rail-gap"><span>{formatiere_pause(minuten_luecke)}</span></div>')
-
-        status = "active" if termin["start"] <= jetzt < termin["ende"] else "future"
-        name = html.escape(str(termin.get("name", "Ohne Namen")))
-        zeit = f'{termin["start"].strftime("%H:%M")}\u2013{termin["ende"].strftime("%H:%M")} Uhr'
-        bausteine.append(
-            f'<div class="rail-entry {status}"><div class="rail-dot"></div>'
-            f'<div class="rail-card"><div class="rail-time">{zeit}</div>'
-            f'<div class="rail-name">{name}</div></div></div>'
-        )
-        vorheriges_ende = termin["ende"]
-
-    feierabend_zeit = sortierte_termine[-1]["ende"].strftime("%H:%M")
-    bausteine.append(
-        '<div class="rail-entry finish"><div class="rail-dot"></div>'
-        f'<div class="rail-card"><div class="rail-time">ab {feierabend_zeit} Uhr</div>'
-        '<div class="rail-name">Feierabend</div></div></div>'
-    )
-    bausteine.append("</div>")
-    return "".join(bausteine)
-
-def formatiere_naechsten_termin(termin, kalender_verbunden=False):
-    if not termin and not kalender_verbunden:
-        return "Noch nicht verbunden", "Google Kalender wird im n\u00E4chsten Schritt angeschlossen"
-    if not termin:
-        return "Heute niemand mehr", "Feierabend \u2013 auch der Fl\u00FCgel hat jetzt frei"
-
-    name = termin.get("name", "Unbekannt")
-    start = termin.get("start")
-    if not start:
-        return name, "Uhrzeit nicht verf\u00FCgbar"
-
-    jetzt = datetime.datetime.now(start.tzinfo) if start.tzinfo else datetime.datetime.now()
-    minuten_bis_start = max(0, int((start - jetzt).total_seconds() // 60))
-    if minuten_bis_start >= 60:
-        stunden, minuten = divmod(minuten_bis_start, 60)
-        abstand = f"in {stunden} Std. {minuten} Min."
-    else:
-        abstand = f"in {minuten_bis_start} Minuten"
-    return f"{name} \u00B7 {start.strftime('%H:%M')} Uhr", abstand
-
-# --- ZERTIFIKAT FUNKTION ---
-def erstelle_zertifikat_pdf(student, df_archiv):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 18)
-    pdf.cell(200, 10, txt=f"Jahres-Zertifikat fuer {student}", ln=True, align='C')
-    
-    aktuelles_jahr = datetime.datetime.now().year
-    pdf.ln(10)
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(200, 10, txt=f"Du hast im Jahr {aktuelles_jahr} folgende Stuecke gelernt:", ln=True)
-    
-    pdf.set_font("Arial", size=12)
-    stuecke = df_archiv[df_archiv['Schueler'] == student]['Stueck'].unique()
-    for s in stuecke:
-        pdf.cell(200, 10, txt=f"- {s}", ln=True)
-        
-    pdf.ln(10)
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(200, 10, txt="Besondere Erfolge - dafuer habe ich ein Lobkaertchen erhalten:", ln=True)
-    pdf.set_font("Arial", size=12)
-    
-    lob = df_archiv[(df_archiv['Schueler'] == student) & (df_archiv['K\u00E4rtchen_Erhalten'] == 'Ja')]
-    for _, row in lob.iterrows():
-        pdf.cell(200, 10, txt=f"* {row['Grund']}", ln=True)
-        
-    return pdf.output(dest='S').encode('latin-1')
-
-df_archiv = lade_archiv_aus_sheet()
-
-# --- DAUERHAFTE STEUERUNG IN DER SEITENLEISTE ---
-schueler_liste = df_archiv["Schueler"].dropna().unique().tolist()
-jetzt = datetime.datetime.now(ZoneInfo("Europe/Berlin"))
-heutige_termine = get_heutige_unterrichtstermine_aus_kalender()
-aktueller_termin, naechster_termin = finde_aktuellen_und_naechsten_termin(heutige_termine, jetzt)
-erkennter_schueler = aktueller_termin["name"] if aktueller_termin else None
-naechster_titel, naechster_hinweis = formatiere_naechsten_termin(
-    naechster_termin,
-    kalender_verbunden=heutige_termine is not None,
+# Seiten-Konfiguration
+st.set_page_config(
+    page_title="Sport-Tagebuch", page_icon="🏃‍♀️", layout="centered"
 )
 
-with st.sidebar:
-    st.markdown('<div class="day-label">Tages\u00FCbersicht</div>', unsafe_allow_html=True)
-    st.markdown('<div class="day-title">Heute im Unterricht</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="day-date">{datetime.date.today().strftime("%d.%m.%Y")}</div>', unsafe_allow_html=True)
-    st.markdown(erstelle_tagesleisten_html(heutige_termine, jetzt), unsafe_allow_html=True)
+# --- Anmeldung: ohne Google-Login keine Nutzung der App -------------
+if not st.user.is_logged_in:
+  st.title("🏃‍♀️ Sport-Tagebuch")
+  st.write(
+      "Bitte melde dich mit deinem Google-Konto an, um deine "
+      "Trainingsdaten zu sehen und zu speichern."
+  )
+  st.button("Mit Google anmelden", on_click=st.login, type="primary")
+  st.stop()
 
-    if erkennter_schueler:
-        student = erkennter_schueler
-        unterrichtsdatum = datetime.date.today()
-        dauer_minuten = int((aktueller_termin["ende"] - aktueller_termin["start"]).total_seconds() // 60)
-        st.success(f"Aktuell: {student}")
-        fortschritt = (jetzt - aktueller_termin["start"]).total_seconds() / (aktueller_termin["ende"] - aktueller_termin["start"]).total_seconds()
-        st.progress(min(max(fortschritt, 0.0), 1.0), text=f'{aktueller_termin["start"].strftime("%H:%M")}\u2013{aktueller_termin["ende"].strftime("%H:%M")} Uhr')
-    else:
-        with st.expander("Sch\u00FCler manuell ausw\u00E4hlen", expanded=heutige_termine is None):
-            student = st.selectbox("Sch\u00FCler", schueler_liste, label_visibility="collapsed")
-            unterrichtsdatum = st.date_input("Datum", value=datetime.date.today(), format="DD.MM.YYYY")
-            dauer_minuten = st.selectbox("Dauer", [30, 45, 60], index=1, format_func=lambda x: f"{x} Minuten")
-        st.caption("Die manuelle Auswahl wird nur ben\u00F6tigt, wenn gerade kein Kalendertermin l\u00E4uft.")
+NUTZER_EMAIL = st.user.email
 
-# --- UI NAVIGATION ---
-tab1, tab2, tab3 = st.tabs(["Live-Cockpit", "Analyse & Fortschritt", "Zertifikate & TaskCards"])
+st.caption(f"Angemeldet als {NUTZER_EMAIL}")
+if st.button("Abmelden", key="logout_btn"):
+  st.logout()
 
-with tab1:
+# --- Eigenes Icon für "Beweglichkeit" (Original-Bild des Nutzers) ---
+BEWEGLICHKEIT_ICON_B64 = (
+    "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"
+)
+
+
+def beweglichkeit_icon_html(size_px):
+  """Gibt das eigene Beweglichkeit-Icon (Originalbild) als img-Tag zurück."""
+  return (
+      f"<img src='data:image/png;base64,{BEWEGLICHKEIT_ICON_B64}' "
+      f"style='height:{size_px}px; width:{size_px}px; object-fit:contain; "
+      f"vertical-align:middle;' />"
+  )
+
+# --- Eigenes Icon für "Balance" (vom Nutzer bereitgestelltes Bild) ---
+BALANCE_ICON_B64 = (
+    "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"
+)
+
+
+def balance_icon_html(size_px):
+  """Gibt das eigene Balance-Icon (Originalbild) als img-Tag zurück."""
+  return (
+      f"<img src='data:image/png;base64,{BALANCE_ICON_B64}' "
+      f"style='height:{size_px}px; width:{size_px}px; object-fit:contain; "
+      f"vertical-align:middle;' />"
+  )
+
+
+def get_status_color(minutes, goal):
+  """Liefert die Statusfarbe passend zur bisherigen Ampel-Logik
+  (grau = nichts, rot = wenig, gelb = mittel, grün = Ziel erreicht),
+  aber verhältnisbasiert, damit sie zum Ring-Füllstand passt."""
+  if minutes <= 0:
+    return "#c9c9c9"
+  ratio = minutes / goal if goal else 0
+  if ratio >= 1:
+    return "#2e7d46"
+  elif ratio >= 0.66:
+    return "#e3a008"
+  else:
+    return "#d9534f"
+
+
+def render_progress_ring_svg(minutes, goal, size=40, stroke_width=5):
+  """Baut ein Ring-Fortschrittsdiagramm (Donut) als SVG: Füllstand
+  proportional zu minutes/goal, Minutenzahl in der Mitte."""
+  ratio = 0 if not goal else min(minutes / goal, 1.0)
+  color = get_status_color(minutes, goal)
+  radius = (size - stroke_width) / 2
+  circumference = 2 * math.pi * radius
+  offset = circumference * (1 - ratio)
+  center = size / 2
+  font_size = max(13, round(size * 0.5))
+  return (
+      f"<svg width='{size}' height='{size}' viewBox='0 0 {size} {size}'"
+      f" style='display:block;'>"
+      f"<circle cx='{center}' cy='{center}' r='{radius}' fill='none'"
+      f" stroke='#e9e9e9' stroke-width='{stroke_width}' />"
+      f"<circle cx='{center}' cy='{center}' r='{radius}' fill='none'"
+      f" stroke='{color}' stroke-width='{stroke_width}'"
+      f" stroke-linecap='round'"
+      f" stroke-dasharray='{circumference:.2f}'"
+      f" stroke-dashoffset='{offset:.2f}'"
+      f" transform='rotate(-90 {center} {center})' />"
+      f"<text x='{center}' y='{center + font_size * 0.36:.1f}'"
+      f" text-anchor='middle' font-size='{font_size}' font-weight='700'"
+      f" fill='#333'>{int(minutes)}</text>"
+      f"</svg>"
+  )
+
+
+def render_icon_box(
+    icon_html, minutes, goal, box_height=88, icon_font_size=20, ring_size=42,
+    click_key=None, kat_name=None, label_font_size=12, icon_row_height=None,
+):
+  """Rendert eines der 6 Status-Kästchen (Woche/Heute) mit Icon, der
+  Kategorie-Beschriftung (gleiche Optik wie im Übungsarsenal) und einem
+  Fortschrittsring (samt Minutenzahl) darunter. Feste Höhe/Breite, damit
+  alle 6 Boxen garantiert gleich groß sind. Die Icon-Zeile bekommt eine
+  feste Höhe (icon_row_height), damit unterschiedlich große Icons (z.B.
+  das größere Beweglichkeit-Bild) Beschriftung und Ring nicht
+  verschieben - Text und Ring stehen dadurch bei allen Kategorien auf
+  gleicher Höhe. Wenn click_key gesetzt ist, erscheint darunter ein
+  kleiner Button, der die Detailliste dieser Kategorie
+  (click_key = (scope, kategorie)) öffnet."""
+  ring_svg = render_progress_ring_svg(minutes, goal, size=ring_size)
+  if icon_row_height is None:
+    icon_row_height = icon_font_size + 12
+  label_html = (
+      f"<span class='icon-box-label' style='font-size: {label_font_size}px;"
+      f" font-weight: 800; color: #1f4a34; letter-spacing: 0.2px;"
+      f" line-height: 1.15;'>{kat_name}</span>"
+      if kat_name
+      else ""
+  )
+  st.markdown(
+      f"<div class='icon-box' style='text-align: center; background: white;"
+      f" padding: 6px; border-radius: 8px 8px 0 0; border: 1px solid"
+      f" #d0edd2; border-bottom: none; width: 100%; height: {box_height}px;"
+      f" box-sizing: border-box; display: flex; flex-direction: column;"
+      f" align-items: center; justify-content: center; gap: 3px;"
+      f" overflow: hidden;'>"
+      f"{label_html}"
+      f"<span class='icon-box-symbol' style='height: {icon_row_height}px;"
+      f" display: flex; align-items: center; justify-content: center;"
+      f" font-size: {icon_font_size}px; line-height: 1;'>{icon_html}</span>"
+      f"{ring_svg}"
+      f"</div>",
+      unsafe_allow_html=True,
+  )
+  if click_key is not None:
+    scope, kat_name = click_key
+    ist_aktiv = st.session_state.get("detail_ansicht") == click_key
+    if st.button(
+        "✕" if ist_aktiv else "🔍",
+        key=f"detailbtn_{scope}_{kat_name}",
+        use_container_width=True,
+    ):
+      st.session_state["detail_ansicht"] = None if ist_aktiv else click_key
+      st.rerun()
+
+
+def render_arsenal_tile(
+    icon_html, kat_name, anzahl, box_height=88,
+    state_key="arsenal_detail_kat", button_prefix="arsenaltile",
+):
+  """Klickbare Kategorie-Kachel - gleiche Optik/Logik wie die Kacheln oben
+  im Tagebuch, damit es einheitlich aussieht. Wird sowohl fürs
+  Übungsarsenal als auch für die Kategorie-Übersicht bei "Eigene
+  Übungen" verwendet; state_key/button_prefix sorgen dabei für
+  eindeutige Widget-Keys je Bereich."""
+  st.markdown(
+      f"<div class='icon-box' style='text-align:center; background:white;"
+      f" padding:6px; border-radius:8px 8px 0 0; border:1px solid #d0edd2;"
+      f" border-bottom:none; width:100%; height:{box_height}px;"
+      f" box-sizing:border-box; display:flex; flex-direction:column;"
+      f" align-items:center; justify-content:center; gap:2px;'>"
+      f"<span class='icon-box-label' style='font-size:12px; font-weight:800;"
+      f" color:#1f4a34; letter-spacing:0.2px;"
+      f" line-height:1.15;'>{kat_name}</span>"
+      f"<span style='height:38px; display:flex; align-items:center;"
+      f" justify-content:center; font-size:26px; line-height:1;'>"
+      f"{icon_html}</span>"
+      f"<span style='font-size:11px; color:#777;'>({anzahl})</span>"
+      f"</div>",
+      unsafe_allow_html=True,
+  )
+  ist_aktiv = st.session_state.get(state_key) == kat_name
+  if st.button(
+      "✕" if ist_aktiv else "🔍",
+      key=f"{button_prefix}_{kat_name}",
+      use_container_width=True,
+  ):
+    st.session_state[state_key] = None if ist_aktiv else kat_name
+    st.rerun()
+
+
+
+@st.dialog("Sonstiges – bitte kurz beschreiben")
+def sonstiges_dialog(state_key):
+  """Öffnet ein modales Fenster, in dem man frei Text eintragen kann,
+  wenn bei einer Kategorie die Unterkategorie 'Sonstiges' gewählt wurde."""
+  text_val = st.text_area(
+      "Was genau hast du gemacht?",
+      value=st.session_state.get(state_key, ""),
+      key=f"{state_key}_input",
+  )
+  col_d1, col_d2 = st.columns(2)
+  with col_d1:
+    if st.button(
+        "Übernehmen", key=f"{state_key}_ok", type="primary",
+        use_container_width=True,
+    ):
+      st.session_state[state_key] = text_val.strip()
+      st.session_state[f"{state_key}_done"] = True
+      st.rerun()
+  with col_d2:
+    if st.button(
+        "Abbrechen", key=f"{state_key}_cancel", use_container_width=True
+    ):
+      st.session_state[f"{state_key}_done"] = True
+      st.rerun()
+
+
+def handle_sonstiges_unterkategorie(selected_unterkat, cat_key):
+  """Wenn 'Sonstiges' gewählt ist, öffnet dies (einmalig, bis wieder
+  gewechselt wird) das Dialog-Fenster zur Texteingabe und liefert den
+  eingegebenen Freitext als tatsächliche Unterkategorie zurück."""
+  state_key = f"sonstiges_text_{cat_key}"
+  done_key = f"{state_key}_done"
+
+  if selected_unterkat != "Sonstiges":
+    st.session_state[done_key] = False
+    return selected_unterkat
+
+  if not st.session_state.get(done_key, False):
+    sonstiges_dialog(state_key)
+
+  freitext = st.session_state.get(state_key, "").strip()
+  if freitext:
+    st.caption(f"📝 Sonstiges: {freitext}")
+  else:
+    st.caption("📝 Sonstiges (noch keine Beschreibung eingetragen)")
+  return freitext if freitext else "Sonstiges"
+
+
+# --- Google Sheets als dauerhafter Speicher (pro Google-Konto) ------
+# Jede Tabelle bekommt ein eigenes Tabellenblatt ("Nutzer"-Spalte trennt
+# die Zeilen der einzelnen Google-Konten). Gelesen wird nur einmal pro
+# Sitzung (siehe die "if ... not in st.session_state"-Guards weiter
+# unten); geschrieben wird direkt nach jeder Änderung.
+GSHEET_TABELLEN = {
+    "protokoll": {
+        "spalten": [
+            "Datum", "Kategorie", "Unterkategorie", "Minuten", "Status",
+            "Notizen", "Verknüpfte Übung", "Verknüpfter Link",
+            "Verknüpftes Bild",
+        ],
+        "numerisch": ["Minuten"],
+    },
+    "eigene_uebungen": {
+        "spalten": [
+            "Datum", "Kategorie", "Unterkategorie", "Dauer (Min.)",
+            "Sätze", "Wiederholungen", "Notizen", "Link", "Bild",
+        ],
+        "numerisch": ["Dauer (Min.)", "Sätze", "Wiederholungen"],
+    },
+    "vitaldaten": {
+        "spalten": ["Datum", "Schritte", "Gewicht", "VO2max"],
+        "numerisch": ["Schritte", "Gewicht", "VO2max"],
+    },
+    "arsenal": {
+        "spalten": [
+            "Kategorie", "Typ", "Bereich / Übung", "Link", "Beschreibung",
+            "Bild",
+        ],
+        "numerisch": [],
+    },
+}
+
+
+@st.cache_resource
+def _gsheet_client():
+  creds = Credentials.from_service_account_info(
+      dict(st.secrets["gcp_service_account"]),
+      scopes=["https://www.googleapis.com/auth/spreadsheets"],
+  )
+  return gspread.authorize(creds)
+
+
+@st.cache_resource
+def _spreadsheet():
+  return _gsheet_client().open_by_url(st.secrets["sheets"]["spreadsheet_url"])
+
+
+def _worksheet(tab_name, spalten):
+  tabelle = _spreadsheet()
+  try:
+    return tabelle.worksheet(tab_name)
+  except gspread.WorksheetNotFound:
+    arbeitsblatt = tabelle.add_worksheet(
+        title=tab_name, rows=1000, cols=len(spalten) + 1
+    )
+    arbeitsblatt.append_row(["Nutzer"] + spalten)
+    return arbeitsblatt
+
+
+def _lade_nutzer_df(tab_name):
+  info = GSHEET_TABELLEN[tab_name]
+  spalten = info["spalten"]
+  arbeitsblatt = _worksheet(tab_name, spalten)
+  alle_zeilen = arbeitsblatt.get_all_records()
+  eigene_zeilen = [
+      zeile for zeile in alle_zeilen if zeile.get("Nutzer") == NUTZER_EMAIL
+  ]
+  df = pd.DataFrame(eigene_zeilen, columns=["Nutzer"] + spalten)
+  df = df.drop(columns=["Nutzer"])
+  for spalte in info["numerisch"]:
+    df[spalte] = pd.to_numeric(df[spalte], errors="coerce")
+  return df.reset_index(drop=True)
+
+
+def _speichere_nutzer_df(tab_name, df):
+  info = GSHEET_TABELLEN[tab_name]
+  spalten = info["spalten"]
+  arbeitsblatt = _worksheet(tab_name, spalten)
+  alle_zeilen = arbeitsblatt.get_all_records()
+  andere_nutzer_zeilen = [
+      [zeile.get(spalte, "") for spalte in ["Nutzer"] + spalten]
+      for zeile in alle_zeilen
+      if zeile.get("Nutzer") != NUTZER_EMAIL
+  ]
+  eigene_neue_zeilen = df[spalten].fillna("").astype(str).values.tolist()
+  eigene_neue_zeilen = [
+      [NUTZER_EMAIL] + zeile for zeile in eigene_neue_zeilen
+  ]
+  header = ["Nutzer"] + spalten
+  arbeitsblatt.clear()
+  arbeitsblatt.update([header] + andere_nutzer_zeilen + eigene_neue_zeilen)
+
+
+def _lade_koerpergroesse():
+  arbeitsblatt = _worksheet("profil", ["Koerpergroesse_cm"])
+  alle_zeilen = arbeitsblatt.get_all_records()
+  for zeile in alle_zeilen:
+    if zeile.get("Nutzer") == NUTZER_EMAIL:
+      wert = zeile.get("Koerpergroesse_cm")
+      return float(wert) if wert not in (None, "") else None
+  return None
+
+
+def _speichere_koerpergroesse(wert):
+  arbeitsblatt = _worksheet("profil", ["Koerpergroesse_cm"])
+  alle_zeilen = arbeitsblatt.get_all_records()
+  andere_nutzer_zeilen = [
+      [zeile.get("Nutzer", ""), zeile.get("Koerpergroesse_cm", "")]
+      for zeile in alle_zeilen
+      if zeile.get("Nutzer") != NUTZER_EMAIL
+  ]
+  eigene_zeile = [[NUTZER_EMAIL, str(wert) if wert else ""]]
+  arbeitsblatt.clear()
+  arbeitsblatt.update(
+      [["Nutzer", "Koerpergroesse_cm"]] + andere_nutzer_zeilen + eigene_zeile
+  )
+
+
+def _bild_datei_zu_data_uri(hochgeladene_datei, ziel_zeichen=45000):
+  """Verkleinert/komprimiert ein hochgeladenes Bild, damit die
+  base64-codierte Zeichenkette sicher in eine Google-Sheets-Zelle passt
+  (Limit ca. 50.000 Zeichen pro Zelle). Schrumpft nötigenfalls in
+  mehreren Schritten weiter, falls ein Foto auch komprimiert noch zu
+  groß wäre."""
+  bild = Image.open(hochgeladene_datei).convert("RGB")
+  breite = 800
+  qualitaet = 70
+  data_uri = ""
+  for _ in range(6):
+    versuch = bild
+    if versuch.width > breite:
+      neue_hoehe = int(versuch.height * (breite / versuch.width))
+      versuch = versuch.resize((breite, neue_hoehe))
+    puffer = BytesIO()
+    versuch.save(puffer, format="JPEG", quality=qualitaet, optimize=True)
+    b64 = base64.b64encode(puffer.getvalue()).decode("utf-8")
+    data_uri = f"data:image/jpeg;base64,{b64}"
+    if len(data_uri) <= ziel_zeichen:
+      break
+    breite = int(breite * 0.75)
+    qualitaet = max(30, qualitaet - 15)
+  return data_uri
+
+
+# Initialisierung des Session State für Daten
+# Tagebuch-Protokoll: einfache Einträge mit Kategorie/Unterkategorie/
+# Minuten (treibt die Woche/Heute-Kacheln oben). Eigene Übungen (weiter
+# unten) ist ein zweites, unabhängiges System für Einträge mit Sätzen/
+# Wiederholungen/Link/Bild.
+if "protokoll" not in st.session_state:
+  st.session_state.protokoll = _lade_nutzer_df("protokoll")
+
+if "eigene_uebungen" not in st.session_state:
+  st.session_state.eigene_uebungen = _lade_nutzer_df("eigene_uebungen")
+if "eigene_uebung_form_aktiv" not in st.session_state:
+  st.session_state.eigene_uebung_form_aktiv = False
+if "eigene_uebung_import_aktiv" not in st.session_state:
+  st.session_state.eigene_uebung_import_aktiv = False
+
+# Unterkategorien, die nur bei "Balance" zur Auswahl stehen
+BALANCE_UNTERKATEGORIEN = [
+    "Meditation",
+    "Entspannung",
+    "Koordination",
+    "Gleichgewichtstraining",
+    "Jonglieren",
+    "Life Kinetik",
+    "Beweg dein Hirn",
+    "Sonstiges",
+]
+
+# Unterkategorien, die nur bei "Ausdauer" zur Auswahl stehen
+AUSDAUER_UNTERKATEGORIEN = [
+    "Joggen",
+    "Nordic Walking",
+    "Walking",
+    "Wandern",
+    "Radfahren",
+    "Schwimmen",
+    "Treppensteigen",
+    "Sonnengruß",
+    "Sonstiges",
+]
+
+# Unterkategorien, die nur bei "Beweglichkeit" zur Auswahl stehen
+BEWEGLICHKEIT_UNTERKATEGORIEN = [
+    "Yoga",
+    "Ausgleichsübungen",
+    "Faszientraining",
+    "Rückenfit",
+    "Massage",
+    "Chi Gong",
+    "Sonstiges",
+]
+
+# Unterkategorien, die nur bei "Kraft" zur Auswahl stehen
+KRAFT_UNTERKATEGORIEN = [
+    "Pilates",
+    "Rückenfit",
+    "Stabilisierungstraining",
+    "Therabandtraining",
+    "Hanteltraining",
+    "Sonstiges",
+]
+
+# Unterkategorien, die nur bei "Ernährung" zur Auswahl stehen (für die
+# Kategorie-Auswahl bei "Eigene Übungen")
+ERNAEHRUNG_UNTERKATEGORIEN = ["Sonstiges"]
+
+# Unterkategorien, die nur bei "Gesamtbefinden" zur Auswahl stehen (für die
+# Kategorie-Auswahl bei "Eigene Übungen")
+GESAMTBEFINDEN_UNTERKATEGORIEN = ["Sonstiges"]
+
+# Tageszeiten, die nur bei "Ernährung" im Tagebuch-Formular zur Auswahl stehen
+ERNAEHRUNG_TAGESZEITEN = ["Morgens", "Mittags", "Abends"]
+
+# Ampel-Status für Ernährung im Tagebuch-Formular: (Anzeige-Label,
+# gespeicherter Wert, Farbe)
+ERNAEHRUNG_AMPEL = [
+    ("🟢 Umgesetzt", "Umgesetzt", "#2e7d46"),
+    ("🟡 Teilweise umgesetzt", "Teilweise umgesetzt", "#e3a008"),
+    ("🔴 Nicht umgesetzt", "Nicht umgesetzt", "#d9534f"),
+]
+
+# Smileys für "Gesamtbefinden" im Tagebuch-Formular
+STIMMUNG_SMILEYS = [
+    ("😞 Schlecht", "😞 Schlecht"),
+    ("😐 Neutral", "😐 Neutral"),
+    ("😊 Gut", "😊 Gut"),
+]
+
+if "arsenal" not in st.session_state:
+  st.session_state.arsenal = _lade_nutzer_df("arsenal")
+  if st.session_state.arsenal.empty:
+    # Erstmalige Anmeldung: ein paar Beispiel-Einträge zum Start
+    st.session_state.arsenal = pd.DataFrame(
+        [
+            {
+                "Kategorie": "Beweglichkeit",
+                "Typ": "Text",
+                "Bereich / Übung": "Mobilisation & Dehnen",
+                "Link": "https://example.com/mobilitaet",
+                "Beschreibung": "Tägliche Routine für den Rücken",
+                "Bild": "",
+            },
+            {
+                "Kategorie": "Kraft",
+                "Typ": "Text",
+                "Bereich / Übung": "Kräftigung Rumpf",
+                "Link": "https://example.com/ruecken",
+                "Beschreibung": "Aufrechte Haltung, Bauchspannung halten",
+                "Bild": "",
+            },
+            {
+                "Kategorie": "Ausdauer",
+                "Typ": "Text",
+                "Bereich / Übung": "AIMO App",
+                "Link": "",
+                "Beschreibung": "Empfehlenswerte App zur Unterstützung beim Ausdauertraining",
+                "Bild": "",
+            },
+            {
+                "Kategorie": "Kraft",
+                "Typ": "Text",
+                "Bereich / Übung": "AIMO App",
+                "Link": "",
+                "Beschreibung": "Empfehlenswerte App zur Unterstützung beim Krafttraining",
+                "Bild": "",
+            },
+        ]
+    )
+
+# Kategorien und Typen für das Übungsarsenal (gleiche 6 Kategorien wie im
+# Tagebuch, plus Typ: was für eine Art von Eintrag das ist)
+ARSENAL_KATEGORIEN = [
+    "Ausdauer",
+    "Kraft",
+    "Beweglichkeit",
+    "Balance",
+    "Ernährung",
+    "Gesamtbefinden",
+]
+ARSENAL_TYPEN = ["Bild", "Link", "Text"]
+
+if "wochen_ansicht_aktiv" not in st.session_state:
+  st.session_state.wochen_ansicht_aktiv = False
+
+# Vitaldaten: Schritte & Gewicht (manuell oder per CSV-Import von
+# Garmin/Google Fit erfasst)
+if "vitaldaten" not in st.session_state:
+  st.session_state.vitaldaten = _lade_nutzer_df("vitaldaten")
+if "vital_form_aktiv" not in st.session_state:
+  st.session_state.vital_form_aktiv = False
+if "vital_import_aktiv" not in st.session_state:
+  st.session_state.vital_import_aktiv = False
+
+# ----------------------------------------------------
+# 1. STARTSEITE & TAGEBUCH
+# ----------------------------------------------------
+if True:
+  st.title("Tagebuch")
+  st.markdown("##### Aktivitätentagebuch Prävention")
+  st.write("---")
+
+  # --- Automatische Datums- und Wochenberechnung ---
+  heute = datetime.date.today()
+
+  if "wochen_offset" not in st.session_state:
+    st.session_state.wochen_offset = 0
+
+  referenz_datum = heute + datetime.timedelta(
+      weeks=st.session_state.wochen_offset
+  )
+  jahr, kalenderwoche, wochentag = referenz_datum.isocalendar()
+
+  start_der_woche = referenz_datum - datetime.timedelta(days=wochentag - 1)
+  ende_der_woche = start_der_woche + datetime.timedelta(days=6)
+
+  monate = [
+      "Jan",
+      "Feb",
+      "Mär",
+      "Apr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Dez",
+  ]
+  start_monat = monate[start_der_woche.month - 1]
+  ende_monat = monate[ende_der_woche.month - 1]
+
+  if start_der_woche.month == ende_der_woche.month:
+    datum_string = (
+        f"{start_der_woche.day}. - {ende_der_woche.day}. {ende_monat}"
+        f" {ende_der_woche.year}"
+    )
+  else:
+    datum_string = (
+        f"{start_der_woche.day}. {start_monat} - {ende_der_woche.day}."
+        f" {ende_monat} {ende_der_woche.year}"
+    )
+
+  wochentage_de = [
+      "Montag",
+      "Dienstag",
+      "Mittwoch",
+      "Donnerstag",
+      "Freitag",
+      "Samstag",
+      "Sonntag",
+  ]
+  heute_string = f"{wochentage_de[heute.weekday()]}, {heute.day}. {monate[heute.month - 1]} {heute.year}"
+
+  df = st.session_state.protokoll
+
+  def get_cat_minutes(kat_name):
+    if df.empty or kat_name not in df["Kategorie"].values:
+      return 0
+    woche_df = df[
+        (df["Datum"] >= str(start_der_woche))
+        & (df["Datum"] <= str(ende_der_woche))
+        & (df["Kategorie"] == kat_name)
+    ]
+    return int(woche_df["Minuten"].sum())
+
+  def get_today_minutes(kat_name):
+    if df.empty:
+      return 0
+    heute_str = str(heute)
+    heute_df = df[(df["Datum"] == heute_str) & (df["Kategorie"] == kat_name)]
+    if heute_df.empty:
+      return 0
+    return int(heute_df["Minuten"].sum())
+
+  # --- CSS für den grünen Hauptkasten ---
+  # Wichtig: st.container(key="dashcard") erzeugt eine echte Wrapper-Div
+  # mit der CSS-Klasse "st-key-dashcard". Damit landet WIRKLICH jedes
+  # Element (auch der Button "Eintrag erstellen"), das innerhalb von
+  # "with st.container(key='dashcard'):" steht, in diesem Kasten -
+  # der alte :has()-Marker-Trick hat das nicht zuverlässig geschafft.
+  # Voraussetzung: Streamlit-Version, die den key-Parameter für
+  # st.container() unterstützt (ab ca. 1.32).
+  st.markdown(
+      """
+        <style>
+        div.st-key-dashcard {
+            background-color: #e2efe3;
+            border: 1px solid #c8dbc9;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        /* Gleiche Kartenoptik wie beim Tagebuch, für das Übungsarsenal */
+        div.st-key-arsenalcard {
+            background-color: #e2efe3;
+            border: 1px solid #c8dbc9;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        /* Gleiche Kartenoptik für die Vitalwerte-Karte (Schritte/Gewicht/BMI) */
+        div.st-key-vitalcard {
+            background-color: #e2efe3;
+            border: 1px solid #c8dbc9;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        /* Primärer Aktions-Button (z.B. "Eintrag erstellen", "Speichern") -
+           gefülltes, gedecktes Waldgrün, harmoniert mit der grünen Karte */
+        div.stButton button[kind="primary"] {
+            background-color: #3f7a5c !important;
+            color: white !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            border: none !important;
+        }
+        div.stButton button[kind="primary"]:hover {
+            background-color: #2f5e45 !important;
+        }
+
+        /* Sekundäre Buttons (Navigation ⬅️➡️, Wochen-Titel, Abbrechen) -
+           dezent, outline, fügt sich ruhig in die grüne Karte ein */
+        div.stButton button[kind="secondary"] {
+            background-color: #ffffff !important;
+            color: #2f5e45 !important;
+            border: 1px solid #a9c9b3 !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+        }
+        div.stButton button[kind="secondary"]:hover {
+            background-color: #eef6f0 !important;
+            border-color: #3f7a5c !important;
+            color: #2f5e45 !important;
+        }
+
+        /* Spalten (st.columns) sollen auf dem Handy NICHT untereinander
+           stehen, sondern genauso nebeneinander bleiben wie am Desktop.
+           Streamlit stapelt Spalten normalerweise unter ~640px Breite -
+           das erzwingen wir hier zurück auf eine Reihe. Wichtig: die
+           prozentuale Breite (flex-basis) von Streamlit NICHT anfassen,
+           sonst richten sich die Boxen nach ihrem Inhalt statt nach der
+           Bildschirmbreite und werden zu breit. */
+        div[data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            flex-direction: row !important;
+            gap: 4px !important;
+        }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            min-width: 0 !important;
+        }
+
+        /* Auf schmalen Handy-Screens (z.B. Poco F5, ~390-400px breit):
+           Kästchen-Innenabstand, Ring-Icon und Schrift verkleinern, damit
+           alle 6 Boxen pro Reihe bequem nebeneinander passen. */
+        @media (max-width: 480px) {
+            div.st-key-dashcard {
+                padding: 8px;
+            }
+            div.st-key-dashcard [data-testid="stHorizontalBlock"] {
+                gap: 3px !important;
+            }
+            .icon-box {
+                padding: 3px !important;
+            }
+            .icon-box svg {
+                width: 30px !important;
+                height: 30px !important;
+            }
+            .icon-box .icon-box-symbol {
+                font-size: 15px !important;
+            }
+            .icon-box .icon-box-label {
+                font-size: 9px !important;
+            }
+        }
+
+        /* Plus/Minus-Stepper-Buttons beim Minuten-Eingabefeld ausblenden */
+        button[data-testid="stNumberInputStepDown"],
+        button[data-testid="stNumberInputStepUp"] {
+            display: none !important;
+        }
+
+        /* Die 3er-Spalten bei "Weitere Details" und den Filtern
+           (Kategorie/Unterkategorie/Zeitraum bzw. Dauer/Sätze/
+           Wiederholungen) sollen auf schmalen Handy-Screens untereinander
+           stehen dürfen - der nowrap-Zwang oben ist nur für die
+           Kategorie-Kacheln gedacht und macht diese Eingabefelder auf dem
+           Handy sonst unbenutzbar schmal. */
+        @media (max-width: 640px) {
+            div.st-key-wd_details_row div[data-testid="stHorizontalBlock"],
+            div.st-key-protokoll_filter_row div[data-testid="stHorizontalBlock"],
+            div.st-key-uebungen_filter_row div[data-testid="stHorizontalBlock"] {
+                flex-wrap: wrap !important;
+            }
+            div.st-key-wd_details_row div[data-testid="stColumn"],
+            div.st-key-protokoll_filter_row div[data-testid="stColumn"],
+            div.st-key-uebungen_filter_row div[data-testid="stColumn"] {
+                min-width: 100% !important;
+            }
+
+            /* Vitalwerte-Kennzahlen: auf schmalen Screens als 2er-Raster
+               (3 Reihen) statt 6 in einer viel zu schmalen Reihe */
+            div.st-key-vital_metrics_row div[data-testid="stHorizontalBlock"] {
+                flex-wrap: wrap !important;
+            }
+            div.st-key-vital_metrics_row div[data-testid="stColumn"] {
+                /* 4px Gap zwischen den Spalten mit einrechnen, sonst
+                   passen selbst zwei 50%-Spalten nicht in eine Reihe
+                   und jede Kachel landet einzeln in ihrer eigenen Zeile */
+                min-width: calc(50% - 4px) !important;
+            }
+        }
+
+        /* Vitalwerte-Kacheln: einheitlich kleinere, zentrierte Zahlen -
+           und das Label darf vollständig umbrechen statt abgeschnitten
+           zu werden ("Gewicht heute i..."). Label und Wert werden hier
+           beide zwangsweise auf Flex+justify-content:center gesetzt
+           (statt uns auf Streamlits eigenes display:grid/block und
+           text-align zu verlassen) - sonst können Label und Zahl je
+           nach Streamlit-Version unterschiedlich breite Boxen bekommen
+           und stehen dann nicht wirklich auf derselben Mittelachse. */
+        div.st-key-vitalcard [data-testid="stMetric"] {
+            width: 100% !important;
+        }
+        div.st-key-vitalcard [data-testid="stMetricValue"],
+        div.st-key-vitalcard [data-testid="stMetricLabel"] {
+            display: flex !important;
+            width: 100% !important;
+            justify-content: center !important;
+            text-align: center !important;
+        }
+        div.st-key-vitalcard [data-testid="stMetricValue"] {
+            font-size: 1.4rem !important;
+        }
+        div.st-key-vitalcard [data-testid="stMetricLabel"] {
+            align-items: flex-end;
+            /* Feste Mindesthöhe (Platz für 2 Zeilen), damit kurze Labels
+               ("BMI") und lange, umgebrochene Labels ("Ø Gewicht (Woche)
+               in kg") gleich hoch sind - sonst stehen die Zahlen
+               darunter nicht auf einer Höhe. */
+            min-height: 2.6rem;
+        }
+        div.st-key-vitalcard [data-testid="stMetricLabel"] p {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            text-align: center;
+            width: 100%;
+        }
+        </style>
+        """,
+      unsafe_allow_html=True,
+  )
+
+  # Echter Container - alles, was hier drin (eingerückt) steht,
+  # bekommt den grünen Hintergrund, inklusive des Buttons ganz unten.
+  with st.container(key="dashcard"):
+    col_w1, col_w2, col_w3 = st.columns([1, 4, 1])
+    with col_w1:
+      if st.button("⬅️", key="w_back", use_container_width=True):
+        st.session_state.wochen_offset -= 1
+        st.rerun()
+    with col_w2:
+      wochen_titel_text = (
+          f"Woche {kalenderwoche} (Details ausblenden)"
+          if st.session_state.wochen_ansicht_aktiv
+          else f"Woche {kalenderwoche} (Details anzeigen)"
+      )
+      if st.button(wochen_titel_text, key="w_title", use_container_width=True):
+        st.session_state.wochen_ansicht_aktiv = (
+            not st.session_state.wochen_ansicht_aktiv
+        )
+        st.rerun()
+      st.markdown(
+          f"<p style='text-align: center; color: #555; margin: 0;'>{datum_string}</p>",
+          unsafe_allow_html=True,
+      )
+    with col_w3:
+      # Vorwärts-Navigation bis Ende des Jahres 2040 begrenzen
+      naechste_woche_ende = ende_der_woche + datetime.timedelta(weeks=1)
+      if naechste_woche_ende.year > 2040:
+        st.button(
+            "➡️", key="w_fwd", use_container_width=True, disabled=True
+        )
+      elif st.button("➡️", key="w_fwd", use_container_width=True):
+        st.session_state.wochen_offset += 1
+        st.rerun()
+
+    # BEREICH: WOCHE
     st.markdown(
-        """
-        <div class="hero">
-            <div class="hero-kicker">Digitales Unterrichtsstudio</div>
-            <div class="hero-title">Klavierlehrer Live-Cockpit</div>
-            <p class="hero-subtitle">Klassenvorspiel am 02.09.2026 \u00B7 Konzertvorbereitung und Unterricht auf einen Blick</p>
+        "<p style='font-weight: bold; margin-top: 15px;'>Woche</p>",
+        unsafe_allow_html=True,
+    )
+    mini_col1, mini_col2, mini_col3, mini_col4, mini_col5, mini_col6 = (
+        st.columns(6)
+    )
+    with mini_col1:
+      render_icon_box(
+          "🏃‍♂️", get_cat_minutes("Ausdauer"), 90,
+          box_height=108, icon_font_size=26, ring_size=34,
+          click_key=("woche", "Ausdauer"), kat_name="Ausdauer",
+      )
+    with mini_col2:
+      render_icon_box(
+          "🏋️‍♂️", get_cat_minutes("Kraft"), 90,
+          box_height=108, icon_font_size=26, ring_size=34,
+          click_key=("woche", "Kraft"), kat_name="Kraft",
+      )
+    with mini_col3:
+      render_icon_box(
+          beweglichkeit_icon_html(36),
+          get_cat_minutes("Beweglichkeit"), 90,
+          box_height=108, icon_font_size=26, ring_size=34,
+          click_key=("woche", "Beweglichkeit"), kat_name="Beweglichkeit",
+      )
+    with mini_col4:
+      render_icon_box(
+          balance_icon_html(36),
+          get_cat_minutes("Balance"), 90,
+          box_height=108, icon_font_size=26, ring_size=34,
+          click_key=("woche", "Balance"), kat_name="Balance",
+      )
+    with mini_col5:
+      render_icon_box(
+          "🍽️", get_cat_minutes("Ernährung"), 90,
+          box_height=108, icon_font_size=26, ring_size=34,
+          click_key=("woche", "Ernährung"), kat_name="Ernährung",
+      )
+    with mini_col6:
+      render_icon_box(
+          "😊", get_cat_minutes("Gesamtbefinden"), 90,
+          box_height=108, icon_font_size=26, ring_size=34,
+          click_key=("woche", "Gesamtbefinden"), kat_name="Gesamtbefinden",
+      )
+
+    st.write("")
+
+    # BEREICH: HEUTE
+    st.markdown(
+        f"<p style='font-weight: bold;'>Heute <span style='font-size: 13px;"
+        f" color: #555; float: right;'>{heute_string}</span></p>",
+        unsafe_allow_html=True,
+    )
+    t_col1, t_col2, t_col3, t_col4, t_col5, t_col6 = st.columns(6)
+    with t_col1:
+      render_icon_box(
+          "🏃‍♂️", get_today_minutes("Ausdauer"), 90,
+          box_height=98, icon_font_size=22, ring_size=28,
+          click_key=("heute", "Ausdauer"), kat_name="Ausdauer",
+      )
+    with t_col2:
+      render_icon_box(
+          "🏋️‍♂️", get_today_minutes("Kraft"), 90,
+          box_height=98, icon_font_size=22, ring_size=28,
+          click_key=("heute", "Kraft"), kat_name="Kraft",
+      )
+    with t_col3:
+      render_icon_box(
+          beweglichkeit_icon_html(30),
+          get_today_minutes("Beweglichkeit"), 90,
+          box_height=98, icon_font_size=22, ring_size=28,
+          click_key=("heute", "Beweglichkeit"), kat_name="Beweglichkeit",
+      )
+    with t_col4:
+      render_icon_box(
+          balance_icon_html(30),
+          get_today_minutes("Balance"), 90,
+          box_height=98, icon_font_size=22, ring_size=28,
+          click_key=("heute", "Balance"), kat_name="Balance",
+      )
+    with t_col5:
+      render_icon_box(
+          "🍽️", get_today_minutes("Ernährung"), 90,
+          box_height=98, icon_font_size=22, ring_size=28,
+          click_key=("heute", "Ernährung"), kat_name="Ernährung",
+      )
+    with t_col6:
+      render_icon_box(
+          "😊", get_today_minutes("Gesamtbefinden"), 90,
+          box_height=98, icon_font_size=22, ring_size=28,
+          click_key=("heute", "Gesamtbefinden"), kat_name="Gesamtbefinden",
+      )
+
+    # Detail-Liste, wenn eine Kachel (Woche oder Heute) angeklickt wurde
+    if st.session_state.get("detail_ansicht") is not None:
+      detail_scope, detail_kat = st.session_state["detail_ansicht"]
+      if detail_scope == "woche":
+        detail_df = df[
+            (df["Datum"] >= str(start_der_woche))
+            & (df["Datum"] <= str(ende_der_woche))
+            & (df["Kategorie"] == detail_kat)
+        ]
+        zeitraum_text = f"Woche {kalenderwoche} ({datum_string})"
+      else:
+        detail_df = df[
+            (df["Datum"] == str(heute)) & (df["Kategorie"] == detail_kat)
+        ]
+        zeitraum_text = "Heute"
+
+      st.write("---")
+      st.markdown(f"#### {detail_kat} – {zeitraum_text}")
+      if detail_df.empty:
+        st.info(f"Noch keine Einträge für {detail_kat} in diesem Zeitraum.")
+      else:
+        anzeige_spalten = [
+            c
+            for c in [
+                "Datum", "Unterkategorie", "Minuten", "Status", "Notizen"
+            ]
+            if c in detail_df.columns
+        ]
+        st.dataframe(
+            detail_df[anzeige_spalten].sort_values("Datum"),
+            use_container_width=True,
+            hide_index=True,
+        )
+      if st.button("✕ Schließen", key="detail_schliessen_btn"):
+        st.session_state["detail_ansicht"] = None
+        st.rerun()
+
+    st.write("")
+
+    # Grüner Button "Eintrag erstellen" - jetzt garantiert INNERHALB
+    # des grünen Kastens, da er im selben st.container(key="dashcard") steht.
+    # Statt dem bunten ➕-Emoji (auf dunklem Grund schlecht erkennbar) wird
+    # ein normales "+"-Zeichen verwendet, das die weiße Button-Schriftfarbe
+    # übernimmt und damit gut sichtbar ist.
+    if st.button(
+        "＋ Eintrag erstellen",
+        key="btn_create",
+        use_container_width=True,
+        type="primary",
+    ):
+      st.session_state.eintrag_modal_aktiv = True
+      st.rerun()
+
+  # Formular für Eintrag (außerhalb des Kastens)
+  if st.session_state.get("eintrag_modal_aktiv", False):
+    st.write("### 📝 Neuen Eintrag erfassen")
+    # Kein st.form() hier: Felder innerhalb eines Formulars lösen erst
+    # beim Absenden einen Rerun aus, daher würden die Zusatzfelder nicht
+    # sofort erscheinen. Stattdessen normale Widgets + eigene Buttons.
+    selected_cat = st.selectbox(
+        "Kategorie wählen",
+        [
+            "Ausdauer",
+            "Kraft",
+            "Beweglichkeit",
+            "Balance",
+            "Ernährung",
+            "Gesamtbefinden",
+        ],
+        key="entry_kategorie",
+    )
+
+    selected_unterkat = ""
+    status_wert = "Aktiv"
+    minuten = 0
+
+    if selected_cat == "Ausdauer":
+      selected_unterkat = st.selectbox(
+          "Unterkategorie",
+          AUSDAUER_UNTERKATEGORIEN,
+          key="entry_unterkategorie_ausdauer",
+      )
+      selected_unterkat = handle_sonstiges_unterkategorie(
+          selected_unterkat, "ausdauer"
+      )
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
+      )
+
+    elif selected_cat == "Balance":
+      selected_unterkat = st.selectbox(
+          "Unterkategorie",
+          BALANCE_UNTERKATEGORIEN,
+          key="entry_unterkategorie",
+      )
+      selected_unterkat = handle_sonstiges_unterkategorie(
+          selected_unterkat, "balance"
+      )
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
+      )
+
+    elif selected_cat == "Beweglichkeit":
+      selected_unterkat = st.selectbox(
+          "Unterkategorie",
+          BEWEGLICHKEIT_UNTERKATEGORIEN,
+          key="entry_unterkategorie_beweglichkeit",
+      )
+      selected_unterkat = handle_sonstiges_unterkategorie(
+          selected_unterkat, "beweglichkeit"
+      )
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
+      )
+
+    elif selected_cat == "Kraft":
+      selected_unterkat = st.selectbox(
+          "Unterkategorie",
+          KRAFT_UNTERKATEGORIEN,
+          key="entry_unterkategorie_kraft",
+      )
+      selected_unterkat = handle_sonstiges_unterkategorie(
+          selected_unterkat, "kraft"
+      )
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
+      )
+
+    elif selected_cat == "Ernährung":
+      selected_unterkat = st.radio(
+          "Tageszeit",
+          ERNAEHRUNG_TAGESZEITEN,
+          horizontal=True,
+          key="entry_tageszeit",
+      )
+      ampel_label = st.radio(
+          "Status",
+          [label for label, _, _ in ERNAEHRUNG_AMPEL],
+          horizontal=True,
+          key="entry_ampel",
+      )
+      status_wert = next(
+          wert for label, wert, _ in ERNAEHRUNG_AMPEL if label == ampel_label
+      )
+
+    elif selected_cat == "Gesamtbefinden":
+      smiley_label = st.radio(
+          "Stimmung wählen",
+          [label for label, _ in STIMMUNG_SMILEYS],
+          horizontal=True,
+          key="entry_smiley",
+      )
+      selected_unterkat = next(
+          wert for label, wert in STIMMUNG_SMILEYS if label == smiley_label
+      )
+
+    else:
+      minuten = st.number_input(
+          "Minuten", min_value=0, max_value=300, value=None, key="entry_minuten"
+      )
+
+    verknuepfte_uebung = ""
+    verknuepfter_link = ""
+    verknuepftes_bild = ""
+    passende_arsenal_eintraege = st.session_state.arsenal[
+        st.session_state.arsenal["Kategorie"] == selected_cat
+    ]
+    if not passende_arsenal_eintraege.empty:
+      arsenal_optionen = ["Keine Auswahl"] + passende_arsenal_eintraege[
+          "Bereich / Übung"
+      ].tolist()
+      gewaehlte_uebung = st.selectbox(
+          "🔗 Aus Übungsarsenal wählen (optional)", arsenal_optionen,
+          key="entry_arsenal_auswahl",
+      )
+      if gewaehlte_uebung != "Keine Auswahl":
+        arsenal_eintrag = passende_arsenal_eintraege[
+            passende_arsenal_eintraege["Bereich / Übung"] == gewaehlte_uebung
+        ].iloc[0]
+        verknuepfte_uebung = gewaehlte_uebung
+        verknuepfter_link = arsenal_eintrag.get("Link", "") or ""
+        verknuepftes_bild = arsenal_eintrag.get("Bild", "") or ""
+        if arsenal_eintrag.get("Beschreibung"):
+          st.caption(arsenal_eintrag["Beschreibung"])
+        if verknuepfter_link:
+          st.markdown(f"🔗 [{verknuepfter_link}]({verknuepfter_link})")
+        if verknuepftes_bild:
+          st.image(verknuepftes_bild, use_container_width=True)
+
+    datum = st.date_input("Datum", value=heute, key="entry_datum")
+    notizen = st.text_input("Notizen / Details", key="entry_notizen")
+
+    weitere_details_aktiv = st.checkbox(
+        "➕ Weitere Details (Sätze, Wiederholungen, Dauer, Link, Bild)",
+        key="entry_weitere_details_toggle",
+    )
+    wd_dauer = wd_saetze = wd_wiederholungen = None
+    wd_link = ""
+    wd_bild_upload = None
+    if weitere_details_aktiv:
+      with st.container(key="wd_details_row"):
+        wd_col1, wd_col2, wd_col3 = st.columns(3)
+        with wd_col1:
+          wd_dauer = st.number_input(
+              "Dauer (Minuten)", min_value=0, max_value=300, value=None,
+              key="entry_wd_dauer",
+          )
+        with wd_col2:
+          wd_saetze = st.number_input(
+              "Sätze", min_value=0, max_value=50, value=None,
+              key="entry_wd_saetze",
+          )
+        with wd_col3:
+          wd_wiederholungen = st.number_input(
+              "Wiederholungen", min_value=0, max_value=1000, value=None,
+              key="entry_wd_wiederholungen",
+          )
+      wd_link = st.text_input("Link – optional", key="entry_wd_link")
+      wd_bild_upload = st.file_uploader(
+          "Bild – optional", type=["png", "jpg", "jpeg"],
+          key="entry_wd_bild",
+      )
+
+    col_s1, col_s2 = st.columns(2)
+    with col_s1:
+      save_btn = st.button(
+          "Speichern",
+          key="save_entry_btn",
+          type="primary",
+          use_container_width=True,
+      )
+    with col_s2:
+      cancel_btn = st.button(
+          "Abbrechen", key="cancel_entry_btn", use_container_width=True
+      )
+
+    if save_btn:
+      neuer_eintrag = pd.DataFrame(
+          [{
+              "Datum": str(datum),
+              "Kategorie": selected_cat,
+              "Unterkategorie": selected_unterkat,
+              "Minuten": minuten if minuten is not None else 0,
+              "Status": status_wert,
+              "Notizen": notizen,
+              "Verknüpfte Übung": verknuepfte_uebung,
+              "Verknüpfter Link": verknuepfter_link,
+              "Verknüpftes Bild": verknuepftes_bild,
+          }]
+      )
+      st.session_state.protokoll = pd.concat(
+          [st.session_state.protokoll, neuer_eintrag], ignore_index=True
+      )
+      _speichere_nutzer_df("protokoll", st.session_state.protokoll)
+      if weitere_details_aktiv:
+        wd_bild_data_uri = ""
+        if wd_bild_upload is not None:
+          wd_bild_data_uri = _bild_datei_zu_data_uri(wd_bild_upload)
+        neue_uebung = pd.DataFrame(
+            [{
+                "Datum": str(datum),
+                "Kategorie": selected_cat,
+                "Unterkategorie": selected_unterkat,
+                "Dauer (Min.)": wd_dauer,
+                "Sätze": wd_saetze,
+                "Wiederholungen": wd_wiederholungen,
+                "Notizen": notizen,
+                "Link": wd_link.strip(),
+                "Bild": wd_bild_data_uri,
+            }]
+        )
+        st.session_state.eigene_uebungen = pd.concat(
+            [st.session_state.eigene_uebungen, neue_uebung],
+            ignore_index=True,
+        )
+        _speichere_nutzer_df(
+            "eigene_uebungen", st.session_state.eigene_uebungen
+        )
+      st.session_state.eintrag_modal_aktiv = False
+      st.success("Eintrag erfolgreich gespeichert!")
+      st.rerun()
+    if cancel_btn:
+      st.session_state.eintrag_modal_aktiv = False
+      st.rerun()
+    st.write("---")
+
+  # WOCHEN-ANSICHT (3x2 Raster wenn aktiviert)
+  if st.session_state.wochen_ansicht_aktiv:
+    st.write("### 📊 Detail-Auswertung der Kategorien (3x2)")
+
+    def get_cat_stats(kat_name):
+      woche_df_all = df[
+          (df["Datum"] >= str(start_der_woche))
+          & (df["Datum"] <= str(ende_der_woche))
+      ]
+      if woche_df_all.empty or kat_name not in woche_df_all["Kategorie"].values:
+        return 0, "Noch keine Einträge", "⚪"
+      kat_df = woche_df_all[woche_df_all["Kategorie"] == kat_name]
+      min_sum = kat_df["Minuten"].sum()
+      if min_sum >= 90:
+        return min_sum, f"{min_sum} min (Ausreichend)", "🟢"
+      elif min_sum >= 60:
+        return min_sum, f"{min_sum} min (Mittel)", "🟡"
+      else:
+        return (
+            min_sum,
+            (
+                f"{min_sum} min (Zu wenig)"
+                if min_sum > 0
+                else "Noch keine Einträge"
+            ),
+            "🔴" if min_sum > 0 else "⚪",
+        )
+
+    kategorien_paare = [
+        (("🏃‍♂️ Ausdauer", "Ausdauer"), ("🏋️‍♂️ Kraft", "Kraft")),
+        (
+            (f"{beweglichkeit_icon_html(20)} Beweglichkeit", "Beweglichkeit"),
+            (f"{balance_icon_html(20)} Balance", "Balance"),
+        ),
+        (("🍽️ Ernährung", "Ernährung"), ("😊 Gesamtbefinden", "Gesamtbefinden")),
+    ]
+
+    for kat1, kat2 in kategorien_paare:
+      c1, c2 = st.columns(2)
+      m1, text1, sym1 = get_cat_stats(kat1[1])
+      with c1:
+        st.markdown(
+            f"""
+                    <div style="padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 10px; background-color: #f9f9f9; height: 90px;">
+                        <h4 style="margin: 0; color: #333; font-size: 16px;">{kat1[0]}</h4>
+                        <p style="margin: 8px 0 0 0; font-size: 14px; color: #555;">{sym1} {text1}</p>
+                    </div>
+                    """,
+            unsafe_allow_html=True,
+        )
+
+      m2, text2, sym2 = get_cat_stats(kat2[1])
+      with c2:
+        st.markdown(
+            f"""
+                    <div style="padding: 15px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 10px; background-color: #f9f9f9; height: 90px;">
+                        <h4 style="margin: 0; color: #333; font-size: 16px;">{kat2[0]}</h4>
+                        <p style="margin: 8px 0 0 0; font-size: 14px; color: #555;">{sym2} {text2}</p>
+                    </div>
+                    """,
+            unsafe_allow_html=True,
+        )
+
+    gesamt_minuten = (
+        df[
+            (df["Datum"] >= str(start_der_woche))
+            & (df["Datum"] <= str(ende_der_woche))
+        ]["Minuten"].sum()
+        if not df.empty
+        else 0
+    )
+    if gesamt_minuten >= 90:
+      g_sym, g_text = "🟢", f"{gesamt_minuten} min — Ausreichend (Ziel erreicht)"
+    elif gesamt_minuten >= 60:
+      g_sym, g_text = "🟡", f"{gesamt_minuten} min — Mittel"
+    else:
+      g_sym, g_text = (
+          ("🔴", f"{gesamt_minuten} min — Zu wenig")
+          if gesamt_minuten > 0
+          else ("⚪", "Noch keine Einträge")
+      )
+
+    st.markdown(
+        f"""
+        <div style="padding: 18px; border: 2px solid #2F4F4F; border-radius: 10px; margin-top: 10px; margin-bottom: 20px; background-color: #E0EEEE;">
+            <h3 style="margin: 0; color: #2F4F4F; font-size: 18px;">📊 Gesamtauswertung dieser Woche</h3>
+            <p style="margin: 8px 0 0 0; font-size: 15px; font-weight: bold; color: #333;">{g_sym} {g_text}</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
+    st.write("---")
 
-    konzertprogramm = hole_konzertprogramm(student, df_archiv)
-    uebersicht1, uebersicht2, uebersicht3 = st.columns([1.05, 1.2, 1.25])
-    with uebersicht1:
-        st.markdown(
-            f"""<div class="summary-card"><div class="summary-label">Aktueller Sch\u00FCler</div>
-            <div class="summary-value">{html.escape(str(student))}</div><div class="summary-note">{unterrichtsdatum.strftime('%d.%m.%Y')} \u00B7 {dauer_minuten} Minuten \u00B7 Unterricht aktiv</div></div>""",
-            unsafe_allow_html=True,
-        )
-    with uebersicht2:
-        st.markdown(
-            f"""<div class="summary-card"><div class="summary-label">Konzertprogramm</div>
-            <div class="summary-value">{html.escape(konzertprogramm)}</div><div class="summary-note">Klassenvorspiel \u00B7 02.09.2026 \u00B7 {berechne_konzert_countdown()}</div></div>""",
-            unsafe_allow_html=True,
-        )
-    with uebersicht3:
-        st.markdown(
-            f"""<div class="summary-card"><div class="summary-label">N\u00E4chster Sch\u00FCler</div>
-            <div class="summary-value">{html.escape(naechster_titel)}</div><div class="summary-note">{html.escape(naechster_hinweis)}</div></div>""",
-            unsafe_allow_html=True,
-        )
+  # ----------------------------------------------------
+  # VITALWERTE: Schritte, Gewicht, BMI
+  # ----------------------------------------------------
+  vital_df = st.session_state.vitaldaten
 
-    abschnitt("01 \u00B7 Technik", "\u00DCbungs- und Technikbereich", "W\u00E4hle den passenden Bereich und dokumentiere nur das, was heute relevant ist.")
-    modus = st.radio(
-        "Bereich ausw\u00E4hlen",
-        ["Tastenforscher", "Klassische Tonleitern", "Fortgeschrittene Et\u00FCden"],
-        horizontal=True,
-    )
+  def _vital_heute(spalte):
+    if vital_df.empty:
+      return None
+    treffer = vital_df[vital_df["Datum"] == str(heute)]
+    if treffer.empty or treffer[spalte].dropna().empty:
+      return None
+    return treffer[spalte].dropna().iloc[-1]
 
-    if modus == "Tastenforscher":
-        col_h1, col_h2, col_h3 = st.columns([1.2, 0.8, 1.4])
-        with col_h1:
-            heft_titel = st.text_input("Titel der \u00DCbung", value="Tastenforscher")
-        with col_h2:
-            seiten_zahl = st.text_input("Seite", placeholder="z. B. 12\u201313")
-        with col_h3:
-            heft_link = st.text_input("Cloudlink zu den Noten", placeholder="Link einf\u00FCgen")
-        speicher_text = f"Tastenforscher: {heft_titel}, {seiten_zahl or 'ohne Seitenangabe'}"
-
-    elif modus == "Klassische Tonleitern":
-        col_t1, col_t2 = st.columns([1, 1.4])
-        with col_t1:
-            tonleiter_text = st.text_input("Tonart oder Tonleiter", placeholder="z. B. C-Dur")
-        with col_t2:
-            bewegung_wahl = st.radio("Spielart", ["Parallelbewegung", "Gegenbewegung"], horizontal=True)
-        tempo_wahl = st.slider("Tempo", min_value=40, max_value=200, value=80, step=2, format="%d BPM")
-        speicher_text = f"Tonleiter: {tonleiter_text or 'ohne Tonart'} \u00B7 {bewegung_wahl} \u00B7 {tempo_wahl} BPM"
-
+  def _vital_zeitraum_df(zeitraum):
+    if vital_df.empty:
+      return vital_df
+    if zeitraum == "Woche":
+      zeitraum_df = vital_df[
+          (vital_df["Datum"] >= str(start_der_woche))
+          & (vital_df["Datum"] <= str(ende_der_woche))
+      ]
     else:
-        col_e1, col_e2, col_e3 = st.columns(3)
-        with col_e1:
-            etuede_titel = st.text_input("Et\u00FCde oder Name", placeholder="z. B. Et\u00FCde Nr. 6")
-        with col_e2:
-            komponist = st.text_input("Komponist", placeholder="z. B. Czerny")
-        with col_e3:
-            opus_nr = st.text_input("Opus oder Werknummer", placeholder="z. B. op. 299")
-        col_e4, col_e5 = st.columns([1.2, 0.8])
-        with col_e4:
-            etuede_takte = st.text_input("Gespielte Takte", placeholder="z. B. Takt 1\u201332")
-        with col_e5:
-            etuede_tempo = st.number_input("Tempo in BPM", min_value=40, max_value=250, value=100, step=2)
-        etuede_notizen = st.text_area("Technische Beobachtung", placeholder="z. B. Fokus auf Artikulation", height=90)
-        speicher_text = f"Et\u00FCde: {etuede_titel or 'ohne Titel'} \u00B7 {komponist or 'ohne Komponist'} \u00B7 {opus_nr or 'ohne Werknummer'} \u00B7 {etuede_takte or 'ohne Taktangabe'} \u00B7 {etuede_tempo} BPM"
+      zeitraum_tage = {
+          "Monat": 30,
+          "3 Monate": 90,
+          "6 Monate": 180,
+          "Jahr": 365,
+      }[zeitraum]
+      stichtag = str(heute - datetime.timedelta(days=zeitraum_tage))
+      zeitraum_df = vital_df[vital_df["Datum"] >= stichtag]
+    return zeitraum_df.sort_values("Datum")
 
-    abschnitt("02 \u00B7 Repertoire", "St\u00FCcke und Konzertziel", "Trenne das aktuell erarbeitete Repertoire klar vom ausgew\u00E4hlten Vorspielst\u00FCck.")
-    col_stueck1, col_stueck2 = st.columns(2)
-    with col_stueck1:
-        aktuelles_stueck_input = st.text_input("Gespieltes Hauptst\u00FCck", placeholder="Titel und Komponist")
-    with col_stueck2:
-        konzert_stueck_input = st.text_input("Konzertst\u00FCck \u00B7 Vorspiel am 02.09.", placeholder="Ausgew\u00E4hltes Vorspielst\u00FCck")
+  def _vital_zeitraum_avg(spalte, zeitraum):
+    werte = _vital_zeitraum_df(zeitraum)[spalte].dropna()
+    if werte.empty:
+      return None
+    return werte.mean()
 
-    abschnitt("03 \u00B7 Transfer", "Aufgaben und Vorbereitung", "Links steht der klare \u00DCbeauftrag f\u00FCr das Kind, rechts deine Vorbereitung f\u00FCr die n\u00E4chste Stunde.")
-    col1, col2 = st.columns(2)
-    with col1:
-        neue_hausaufgabe = st.text_area("Hausaufgabe f\u00FCr das Kind", placeholder="Konkret, kurz und gut \u00FCberpr\u00FCfbar formulieren", height=125)
-    with col2:
-        neue_besprechung = st.text_area("Bis zur n\u00E4chsten Stunde erledigen", placeholder="Noten, Material, R\u00FCckfragen oder organisatorische Punkte", height=125)
+  def _vital_letzter_wert(spalte):
+    """Letzter bekannter (nicht-leerer) Wert insgesamt - für Werte wie
+    VO2max, die sich nicht täglich ändern, sondern nur gelegentlich neu
+    gemessen/geschätzt werden."""
+    if vital_df.empty or spalte not in vital_df.columns:
+      return None
+    sortiert = vital_df.sort_values("Datum")
+    werte = sortiert[spalte].dropna()
+    if werte.empty:
+      return None
+    return werte.iloc[-1]
 
-    abschnitt("04 \u00B7 W\u00FCrdigung", "Lobk\u00E4rtchen", "Ein besonderer Erfolg wird wertsch\u00E4tzend festgehalten und kann sp\u00E4ter f\u00FCr TaskCards genutzt werden.")
-    _, col_lob_mitte, _ = st.columns([0.7, 3, 0.7])
-    with col_lob_mitte:
-        lob_vergeben = st.checkbox("F\u00FCr diese Stunde ein Lobk\u00E4rtchen vergeben")
-        if lob_vergeben:
-            grund = st.text_area("Pers\u00F6nliche W\u00FCrdigung", placeholder="Was ist heute besonders gut gelungen?", height=105)
-            auf_taskcards = st.checkbox("F\u00FCr die Ver\u00F6ffentlichung auf TaskCards vormerken", value=True)
+  schritte_heute = _vital_heute("Schritte")
+  gewicht_heute = _vital_heute("Gewicht")
+  vo2max_aktuell = _vital_letzter_wert("VO2max")
+
+  if "koerpergroesse_cm" not in st.session_state:
+    st.session_state.koerpergroesse_cm = _lade_koerpergroesse()
+
+  with st.container(key="vitalcard"):
+    st.subheader("📊 Vitalwerte")
+
+    if st.session_state.koerpergroesse_cm is None:
+      groesse_input = st.number_input(
+          "Körpergröße (cm) – einmalig für BMI-Berechnung",
+          min_value=0,
+          max_value=250,
+          value=None,
+          key="groesse_input",
+      )
+      if groesse_input:
+        st.session_state.koerpergroesse_cm = groesse_input
+        _speichere_koerpergroesse(groesse_input)
+        st.rerun()
+    else:
+      with st.expander(
+          f"Körpergröße: {st.session_state.koerpergroesse_cm:.0f} cm "
+          "(ändern)"
+      ):
+        groesse_input = st.number_input(
+            "Körpergröße (cm) – einmalig für BMI-Berechnung",
+            min_value=0,
+            max_value=250,
+            value=st.session_state.koerpergroesse_cm,
+            key="groesse_input",
+        )
+        neue_groesse = groesse_input if groesse_input else None
+        if neue_groesse != st.session_state.koerpergroesse_cm:
+          st.session_state.koerpergroesse_cm = neue_groesse
+          _speichere_koerpergroesse(neue_groesse)
+
+    bmi_wert = None
+    if gewicht_heute and st.session_state.koerpergroesse_cm:
+      groesse_m = st.session_state.koerpergroesse_cm / 100
+      bmi_wert = gewicht_heute / (groesse_m**2)
+
+    zeitraum_auswahl = st.selectbox(
+        "Zeitraum für die Ø-Werte",
+        ["Woche", "Monat", "3 Monate", "6 Monate", "Jahr"],
+        key="vital_zeitraum_auswahl",
+    )
+    schritte_zeitraum_avg = _vital_zeitraum_avg("Schritte", zeitraum_auswahl)
+    gewicht_zeitraum_avg = _vital_zeitraum_avg("Gewicht", zeitraum_auswahl)
+
+    with st.container(key="vital_metrics_row"):
+      m_col1, m_col2, m_col3, m_col4, m_col5, m_col6 = st.columns(6)
+      with m_col1:
+        st.metric(
+            "Schritte heute",
+            f"{int(schritte_heute):,}".replace(",", ".")
+            if schritte_heute is not None
+            else "–",
+        )
+      with m_col2:
+        st.metric(
+            f"Ø Schritte/Tag ({zeitraum_auswahl})",
+            f"{int(schritte_zeitraum_avg):,}".replace(",", ".")
+            if schritte_zeitraum_avg is not None
+            else "–",
+        )
+      with m_col3:
+        st.metric(
+            "Gewicht heute in kg",
+            f"{gewicht_heute:.1f}" if gewicht_heute is not None else "–",
+        )
+      with m_col4:
+        st.metric(
+            f"Ø Gewicht ({zeitraum_auswahl}) in kg",
+            f"{gewicht_zeitraum_avg:.1f}"
+            if gewicht_zeitraum_avg is not None
+            else "–",
+        )
+      with m_col5:
+        st.metric(
+            "BMI", f"{bmi_wert:.1f}" if bmi_wert is not None else "–"
+        )
+      with m_col6:
+        st.metric(
+            "VO2max (aktuell)",
+            f"{vo2max_aktuell:.1f}" if vo2max_aktuell is not None else "–",
+        )
+
+    st.write("")
+    st.markdown(f"#### 📈 Verlauf ({zeitraum_auswahl})")
+    verlauf_df = _vital_zeitraum_df(zeitraum_auswahl)
+    if verlauf_df.empty:
+      st.info("Noch keine Einträge für diesen Zeitraum.")
+    else:
+      chart_col1, chart_col2 = st.columns(2)
+      with chart_col1:
+        st.caption("Schritte")
+        schritte_verlauf = verlauf_df.dropna(subset=["Schritte"])
+        if schritte_verlauf.empty:
+          st.info("Keine Schritte-Einträge in diesem Zeitraum.")
         else:
-            grund = ""
-            auf_taskcards = False
+          st.line_chart(
+              schritte_verlauf.set_index("Datum")["Schritte"],
+              height=220,
+          )
+      with chart_col2:
+        st.caption("Gewicht (kg)")
+        gewicht_verlauf = verlauf_df.dropna(subset=["Gewicht"])
+        if gewicht_verlauf.empty:
+          st.info("Keine Gewicht-Einträge in diesem Zeitraum.")
+        else:
+          gewicht_chart = (
+              alt.Chart(gewicht_verlauf)
+              .mark_line(point=True)
+              .encode(
+                  x=alt.X("Datum:T", title=None),
+                  y=alt.Y(
+                      "Gewicht:Q",
+                      title=None,
+                      scale=alt.Scale(domain=[40, 90]),
+                  ),
+              )
+              .properties(height=220)
+          )
+          st.altair_chart(gewicht_chart, width="stretch")
 
-    with st.expander("Meine Vorbereitung und internen Aufgaben", expanded=False):
-        aufgabe_1 = st.checkbox("Noten f\u00FCr die n\u00E4chste Stunde heraussuchen und kopieren")
-        aufgabe_2 = st.checkbox("TaskCards-Board aktualisieren")
-        neue_lehrer_aufgabe = st.text_input("Weitere eigene Aufgabe", placeholder="Optional")
+    st.write("")
+    col_v1, col_v2 = st.columns(2)
+    with col_v1:
+      if st.button(
+          "＋ Schritte/Gewicht eintragen",
+          key="btn_open_vital_form",
+          type="primary",
+          use_container_width=True,
+      ):
+        st.session_state.vital_form_aktiv = True
+        st.session_state.vital_import_aktiv = False
+        st.rerun()
+    with col_v2:
+      if st.button(
+          "⬆️ CSV importieren",
+          key="btn_open_vital_import",
+          use_container_width=True,
+      ):
+        st.session_state.vital_import_aktiv = True
+        st.session_state.vital_form_aktiv = False
+        st.rerun()
 
-    st.markdown(
-        """<div class="save-panel"><div class="save-panel-title">Unterricht vollst\u00E4ndig dokumentieren</div>
-        <div class="save-panel-copy">Technik, Repertoire, Aufgaben und Lob werden gemeinsam als ein Unterrichtseintrag gesichert.</div></div>""",
-        unsafe_allow_html=True,
-    )
-    if st.button("Unterrichtseintrag speichern", type="primary", use_container_width=True):
-        st.success(f"Unterrichtseintrag f\u00FCr {student} am {unterrichtsdatum.strftime('%d.%m.%Y')} ist vollst\u00E4ndig erfasst.")
-        st.caption("Die dauerhafte \u00DCbertragung in Google Sheets wird im n\u00E4chsten Schritt angeschlossen.")
+    if st.session_state.vital_form_aktiv:
+      st.write("---")
+      v_datum = st.date_input("Datum", value=heute, key="vital_datum")
+      v_schritte = st.number_input(
+          "Schritte", min_value=0, max_value=100000, value=None,
+          key="vital_schritte_input",
+      )
+      v_gewicht = st.number_input(
+          "Gewicht (kg)", min_value=0.0, max_value=400.0, value=None,
+          step=0.1, key="vital_gewicht_input",
+      )
+      v_vo2max = st.number_input(
+          "VO2max (ml/kg/min) – optional, meist von der Uhr geschätzt",
+          min_value=0.0, max_value=100.0, value=None,
+          step=0.1, key="vital_vo2max_input",
+      )
+      col_vs1, col_vs2 = st.columns(2)
+      with col_vs1:
+        vital_save = st.button(
+            "Speichern", key="vital_save_btn", type="primary",
+            use_container_width=True,
+        )
+      with col_vs2:
+        vital_cancel = st.button(
+            "Abbrechen", key="vital_cancel_btn", use_container_width=True
+        )
+      if vital_save:
+        neuer_vital_eintrag = pd.DataFrame(
+            [{
+                "Datum": str(v_datum),
+                "Schritte": v_schritte,
+                "Gewicht": v_gewicht,
+                "VO2max": v_vo2max,
+            }]
+        )
+        st.session_state.vitaldaten = pd.concat(
+            [st.session_state.vitaldaten, neuer_vital_eintrag],
+            ignore_index=True,
+        )
+        _speichere_nutzer_df("vitaldaten", st.session_state.vitaldaten)
+        st.session_state.vital_form_aktiv = False
+        st.success("Gespeichert!")
+        st.rerun()
+      if vital_cancel:
+        st.session_state.vital_form_aktiv = False
+        st.rerun()
 
-with tab2:
-    st.markdown("## Analyse & Fortschritt")
-    st.caption(f"Entwicklung und Jahres\u00FCberblick f\u00FCr {student}")
+    if st.session_state.vital_import_aktiv:
+      st.write("---")
+      st.caption(
+          "Exportiere deine Daten bei Garmin Connect (Einstellungen ›"
+          " Daten exportieren) oder bei Google Fit / Health Connect (über"
+          " Google Takeout) als CSV und lade die Datei hier hoch."
+      )
+      csv_upload = st.file_uploader(
+          "CSV-Datei auswählen", type=["csv"], key="vital_csv_upload"
+      )
+      if csv_upload is not None:
+        try:
+          import_df = pd.read_csv(csv_upload)
+          st.write("Vorschau:")
+          st.dataframe(import_df.head(), use_container_width=True)
 
-    verlauf_daten = pd.DataFrame(
-        {
-            "Datum": ["2026-01-10", "2026-03-15", "2026-05-05", "2026-07-20", "2026-08-18"],
-            "Tempo": [60, 72, 90, 110, 128],
-            "Tonart": ["C-Dur"] * 5,
-        }
-    )
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    kpi1.metric("Archivierte Eintr\u00E4ge", len(df_archiv[df_archiv["Schueler"] == student]))
-    kpi2.metric("Aktuelles Tempo", "128 BPM", "+18 BPM")
-    kpi3.metric("Erarbeitete St\u00FCcke", df_archiv[df_archiv["Schueler"] == student]["Stueck"].nunique())
-    kpi4.metric("Lobk\u00E4rtchen", len(df_archiv[(df_archiv["Schueler"] == student) & (df_archiv["K\u00E4rtchen_Erhalten"] == "Ja")]))
+          spalten = import_df.columns.tolist()
+          keine_option = "– keine –"
+          datum_spalte = st.selectbox(
+              "Welche Spalte enthält das Datum?",
+              spalten,
+              key="csv_datum_spalte",
+          )
+          schritte_spalte = st.selectbox(
+              "Welche Spalte enthält die Schritte? (optional)",
+              [keine_option] + spalten,
+              key="csv_schritte_spalte",
+          )
+          gewicht_spalte = st.selectbox(
+              "Welche Spalte enthält das Gewicht in kg? (optional)",
+              [keine_option] + spalten,
+              key="csv_gewicht_spalte",
+          )
+          vo2max_spalte = st.selectbox(
+              "Welche Spalte enthält VO2max? (optional)",
+              [keine_option] + spalten,
+              key="csv_vo2max_spalte",
+          )
 
-    abschnitt("Jahresverlauf", "Tempo-Entwicklung", "Die Beispielkurve wird nach der Google-Sheets-Anbindung automatisch aus den Unterrichtseintr\u00E4gen gespeist.")
-    fig = px.line(verlauf_daten, x="Datum", y="Tempo", markers=True)
-    fig.update_traces(line_color="#b8954b", line_width=3, marker=dict(size=9, color="#17243b"))
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(255,253,248,.7)",
-        font=dict(family="DM Sans", color="#263247"),
-        margin=dict(l=20, r=20, t=20, b=20),
-        xaxis_title=None,
-        yaxis_title="Tempo \u00B7 BPM",
-        hovermode="x unified",
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    abschnitt("Archiv", "Alle Unterrichtseintr\u00E4ge", "Durchsuche und kontrolliere die bisher erfassten Daten.")
-    st.dataframe(df_archiv, use_container_width=True, hide_index=True)
-
-with tab3:
-    st.markdown("## Zertifikate & TaskCards")
-    st.caption(f"Pers\u00F6nlicher Jahresabschluss 2026 f\u00FCr {student}")
-
-    info_col, action_col = st.columns([1.35, 1])
-    with info_col:
-        abschnitt("Jahreszertifikat", "Fortschritt sichtbar w\u00FCrdigen", "Das Zertifikat b\u00FCndelt erarbeitete St\u00FCcke und besondere Erfolge aus dem Archiv.")
-        st.info("Vor der Erstellung kannst du die Eintr\u00E4ge im Analyse-Tab noch einmal kontrollieren.")
-    with action_col:
-        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-        zertifikat_erstellen = st.button("PDF-Zertifikat erstellen", type="primary", use_container_width=True)
-
-    if zertifikat_erstellen:
-        pdf_daten = erstelle_zertifikat_pdf(student, df_archiv)
-        st.success("Das Zertifikat ist bereit.")
-        download_col, whatsapp_col = st.columns(2)
-        with download_col:
-            st.download_button(
-                label="PDF herunterladen",
-                data=pdf_daten,
-                file_name=f"Zertifikat_{student}_{datetime.datetime.now().year}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
+          if st.button(
+              "Importieren", key="csv_import_btn", type="primary"
+          ):
+            neue_zeilen = pd.DataFrame()
+            neue_zeilen["Datum"] = pd.to_datetime(
+                import_df[datum_spalte], errors="coerce"
+            ).dt.strftime("%Y-%m-%d")
+            neue_zeilen["Schritte"] = (
+                pd.to_numeric(
+                    import_df[schritte_spalte], errors="coerce"
+                )
+                if schritte_spalte != keine_option
+                else None
             )
-        with whatsapp_col:
-            aktuelles_jahr = datetime.datetime.now().year
-            whatsapp_text = f"Hallo! Hier ist das Jahres-Zertifikat {aktuelles_jahr} f\u00FCr {student} aus der Klavierstunde."
-            whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(whatsapp_text)}"
-            st.link_button("\u00DCber WhatsApp teilen", whatsapp_url, use_container_width=True)
+            neue_zeilen["Gewicht"] = (
+                pd.to_numeric(
+                    import_df[gewicht_spalte], errors="coerce"
+                )
+                if gewicht_spalte != keine_option
+                else None
+            )
+            neue_zeilen["VO2max"] = (
+                pd.to_numeric(
+                    import_df[vo2max_spalte], errors="coerce"
+                )
+                if vo2max_spalte != keine_option
+                else None
+            )
+            neue_zeilen = neue_zeilen.dropna(subset=["Datum"])
+            st.session_state.vitaldaten = pd.concat(
+                [st.session_state.vitaldaten, neue_zeilen],
+                ignore_index=True,
+            )
+            _speichere_nutzer_df("vitaldaten", st.session_state.vitaldaten)
+            st.session_state.vital_import_aktiv = False
+            st.success(f"{len(neue_zeilen)} Zeilen importiert!")
+            st.rerun()
+        except Exception as e:
+          st.error(f"CSV konnte nicht gelesen werden: {e}")
+
+      if st.button("Abbrechen", key="vital_import_cancel_btn"):
+        st.session_state.vital_import_aktiv = False
+        st.rerun()
+
+  st.write("---")
+  st.write("### 📒 Ergänzende Trainingsnotizen")
+
+  UEBUNG_UNTERKATEGORIEN = {
+      "Ausdauer": AUSDAUER_UNTERKATEGORIEN,
+      "Kraft": KRAFT_UNTERKATEGORIEN,
+      "Beweglichkeit": BEWEGLICHKEIT_UNTERKATEGORIEN,
+      "Balance": BALANCE_UNTERKATEGORIEN,
+      "Ernährung": ERNAEHRUNG_UNTERKATEGORIEN,
+      "Gesamtbefinden": GESAMTBEFINDEN_UNTERKATEGORIEN,
+  }
+
+  tab_protokoll, tab_uebungen = st.tabs(
+      ["Tagebuch-Einträge", "Eigene Übungen (Name, Sätze, Wiederholungen, Dauer)"]
+  )
+
+  with tab_protokoll:
+    if not df.empty:
+      st.markdown("#### 🔍 Tagebuch filtern")
+      with st.container(key="protokoll_filter_row"):
+        p_col1, p_col2, p_col3 = st.columns(3)
+        with p_col1:
+          p_kategorie = st.selectbox(
+              "Kategorie", ["Alle Kategorien"] + ARSENAL_KATEGORIEN,
+              key="protokoll_filter_kategorie",
+          )
+        with p_col2:
+          if p_kategorie == "Alle Kategorien":
+            p_unterkategorie_optionen = sorted(
+                df["Unterkategorie"].dropna().unique().tolist()
+            )
+          else:
+            p_unterkategorie_optionen = UEBUNG_UNTERKATEGORIEN.get(
+                p_kategorie, []
+            )
+          p_unterkategorie = st.selectbox(
+              "Unterkategorie",
+              ["Alle Unterkategorien"] + list(p_unterkategorie_optionen),
+              key="protokoll_filter_unterkategorie",
+          )
+        with p_col3:
+          p_zeitraum = st.selectbox(
+              "Zeitraum",
+              ["Alle", "Heute", "Letzte Woche", "Letzter Monat",
+               "Letzte 3 Monate", "Letztes Jahr"],
+              key="protokoll_filter_zeitraum",
+          )
+
+      gefilterter_df = df.copy()
+      if p_kategorie != "Alle Kategorien":
+        gefilterter_df = gefilterter_df[
+            gefilterter_df["Kategorie"] == p_kategorie
+        ]
+      if p_unterkategorie != "Alle Unterkategorien":
+        gefilterter_df = gefilterter_df[
+            gefilterter_df["Unterkategorie"] == p_unterkategorie
+        ]
+      if p_zeitraum == "Heute":
+        gefilterter_df = gefilterter_df[gefilterter_df["Datum"] == str(heute)]
+      elif p_zeitraum != "Alle":
+        zeitraum_tage = {
+            "Letzte Woche": 7,
+            "Letzter Monat": 30,
+            "Letzte 3 Monate": 90,
+            "Letztes Jahr": 365,
+        }[p_zeitraum]
+        stichtag = str(heute - datetime.timedelta(days=zeitraum_tage))
+        gefilterter_df = gefilterter_df[gefilterter_df["Datum"] >= stichtag]
+
+      st.caption(f"{len(gefilterter_df)} von {len(df)} Einträgen")
+      st.dataframe(
+          gefilterter_df.sort_values("Datum", ascending=False),
+          use_container_width=True,
+          column_config={
+              "Verknüpftes Bild": st.column_config.ImageColumn(
+                  "Verknüpftes Bild"
+              ),
+              "Verknüpfter Link": st.column_config.LinkColumn(
+                  "Verknüpfter Link"
+              ),
+          },
+      )
+
+      @st.cache_data
+      def convert_df_to_excel(dataframe):
+        from io import BytesIO
+
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+          dataframe.to_excel(writer, index=False, sheet_name="Protokoll")
+        return output.getvalue()
+
+      excel_data = convert_df_to_excel(gefilterter_df)
+      st.download_button(
+          label="📥 Als Excel-Datei herunterladen",
+          data=excel_data,
+          file_name="Sport_Tagebuch.xlsx",
+          mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      )
+    else:
+      st.info("Noch keine Einträge vorhanden.")
+
+  with tab_uebungen:
+    st.caption(
+        "Alle Übungen an einem Ort: Kategorie, Unterkategorie, Sätze/"
+        " Wiederholungen, Dauer, Notizen, Link und Bild."
+    )
+
+    col_u1, col_u2 = st.columns(2)
+    with col_u1:
+      if st.button(
+          "＋ Übung erfassen", key="btn_open_uebung_form",
+          type="primary", use_container_width=True,
+      ):
+        st.session_state.eigene_uebung_form_aktiv = True
+        st.session_state.eigene_uebung_import_aktiv = False
+        st.rerun()
+    with col_u2:
+      if st.button(
+          "⬆️ Excel importieren", key="btn_open_uebung_import",
+          use_container_width=True,
+      ):
+        st.session_state.eigene_uebung_import_aktiv = True
+        st.session_state.eigene_uebung_form_aktiv = False
+        st.rerun()
+
+    if st.session_state.eigene_uebung_form_aktiv:
+      st.write("---")
+      u_kategorie = st.selectbox(
+          "Kategorie", list(UEBUNG_UNTERKATEGORIEN.keys()),
+          key="uebung_kategorie_input",
+      )
+      u_unterkategorie = st.selectbox(
+          "Unterkategorie", UEBUNG_UNTERKATEGORIEN[u_kategorie],
+          key=f"uebung_unterkategorie_input_{u_kategorie}",
+      )
+      u_unterkategorie = handle_sonstiges_unterkategorie(
+          u_unterkategorie, f"uebung_{u_kategorie}"
+      )
+      u_datum = st.date_input("Datum", value=heute, key="uebung_datum_input")
+      u_dauer = st.number_input(
+          "Dauer (Minuten) – optional", min_value=0, max_value=300,
+          value=None, key="uebung_dauer_input",
+      )
+      u_saetze = st.number_input(
+          "Sätze – optional", min_value=0, max_value=50, value=None,
+          key="uebung_saetze_input",
+      )
+      u_wiederholungen = st.number_input(
+          "Wiederholungen – optional", min_value=0, max_value=1000,
+          value=None, key="uebung_wiederholungen_input",
+      )
+      u_notizen = st.text_input("Notizen", key="uebung_notizen_input")
+      u_link = st.text_input("Link – optional", key="uebung_link_input")
+      u_bild_upload = st.file_uploader(
+          "Bild – optional", type=["png", "jpg", "jpeg"],
+          key="uebung_bild_input",
+      )
+
+      col_us1, col_us2 = st.columns(2)
+      with col_us1:
+        uebung_save = st.button(
+            "Speichern", key="uebung_save_btn", type="primary",
+            use_container_width=True,
+        )
+      with col_us2:
+        uebung_cancel = st.button(
+            "Abbrechen", key="uebung_cancel_btn", use_container_width=True
+        )
+      if uebung_save:
+        u_bild_data_uri = ""
+        if u_bild_upload is not None:
+          u_bild_data_uri = _bild_datei_zu_data_uri(u_bild_upload)
+
+        neue_uebung = pd.DataFrame(
+            [{
+                "Datum": str(u_datum),
+                "Kategorie": u_kategorie,
+                "Unterkategorie": u_unterkategorie,
+                "Dauer (Min.)": u_dauer,
+                "Sätze": u_saetze,
+                "Wiederholungen": u_wiederholungen,
+                "Notizen": u_notizen.strip(),
+                "Link": u_link.strip(),
+                "Bild": u_bild_data_uri,
+            }]
+        )
+        st.session_state.eigene_uebungen = pd.concat(
+            [st.session_state.eigene_uebungen, neue_uebung],
+            ignore_index=True,
+        )
+        _speichere_nutzer_df(
+            "eigene_uebungen", st.session_state.eigene_uebungen
+        )
+        st.session_state.eigene_uebung_form_aktiv = False
+        st.success("Gespeichert!")
+        st.rerun()
+      if uebung_cancel:
+        st.session_state.eigene_uebung_form_aktiv = False
+        st.rerun()
+
+    if st.session_state.eigene_uebung_import_aktiv:
+      st.write("---")
+      st.caption(
+          "Lade eine Excel-Datei mit deinen eigenen Übungen hoch (z.B."
+          " Export aus einer Trainings-App oder einer eigenen Tabelle)."
+      )
+      excel_upload = st.file_uploader(
+          "Excel-Datei auswählen", type=["xlsx", "xls"],
+          key="uebung_excel_upload",
+      )
+      if excel_upload is not None:
+        try:
+          import_df = pd.read_excel(excel_upload)
+          st.write("Vorschau:")
+          st.dataframe(import_df.head(), use_container_width=True)
+
+          spalten = import_df.columns.tolist()
+          keine_option = "– keine –"
+          u_datum_spalte = st.selectbox(
+              "Welche Spalte enthält das Datum?", spalten,
+              key="uebung_import_datum_spalte",
+          )
+          u_kategorie_spalte = st.selectbox(
+              "Welche Spalte enthält die Kategorie?", spalten,
+              key="uebung_import_kategorie_spalte",
+          )
+          u_unterkategorie_spalte = st.selectbox(
+              "Welche Spalte enthält die Unterkategorie?",
+              [keine_option] + spalten,
+              key="uebung_import_unterkategorie_spalte",
+          )
+          u_dauer_spalte = st.selectbox(
+              "Welche Spalte enthält die Dauer in Minuten? (optional)",
+              [keine_option] + spalten, key="uebung_import_dauer_spalte",
+          )
+          u_saetze_spalte = st.selectbox(
+              "Welche Spalte enthält die Sätze? (optional)",
+              [keine_option] + spalten, key="uebung_import_saetze_spalte",
+          )
+          u_wdh_spalte = st.selectbox(
+              "Welche Spalte enthält die Wiederholungen? (optional)",
+              [keine_option] + spalten, key="uebung_import_wdh_spalte",
+          )
+          u_notizen_spalte = st.selectbox(
+              "Welche Spalte enthält Notizen? (optional)",
+              [keine_option] + spalten, key="uebung_import_notizen_spalte",
+          )
+          u_link_spalte = st.selectbox(
+              "Welche Spalte enthält den Link? (optional)",
+              [keine_option] + spalten, key="uebung_import_link_spalte",
+          )
+
+          if st.button(
+              "Importieren", key="uebung_import_btn", type="primary"
+          ):
+            neue_zeilen = pd.DataFrame()
+            neue_zeilen["Datum"] = pd.to_datetime(
+                import_df[u_datum_spalte], errors="coerce"
+            ).dt.strftime("%Y-%m-%d")
+            neue_zeilen["Kategorie"] = import_df[u_kategorie_spalte]
+            neue_zeilen["Unterkategorie"] = (
+                import_df[u_unterkategorie_spalte]
+                if u_unterkategorie_spalte != keine_option
+                else ""
+            )
+            neue_zeilen["Dauer (Min.)"] = (
+                pd.to_numeric(import_df[u_dauer_spalte], errors="coerce")
+                if u_dauer_spalte != keine_option
+                else None
+            )
+            neue_zeilen["Sätze"] = (
+                pd.to_numeric(import_df[u_saetze_spalte], errors="coerce")
+                if u_saetze_spalte != keine_option
+                else None
+            )
+            neue_zeilen["Wiederholungen"] = (
+                pd.to_numeric(import_df[u_wdh_spalte], errors="coerce")
+                if u_wdh_spalte != keine_option
+                else None
+            )
+            neue_zeilen["Notizen"] = (
+                import_df[u_notizen_spalte]
+                if u_notizen_spalte != keine_option
+                else ""
+            )
+            neue_zeilen["Link"] = (
+                import_df[u_link_spalte]
+                if u_link_spalte != keine_option
+                else ""
+            )
+            neue_zeilen["Bild"] = ""
+            neue_zeilen = neue_zeilen.dropna(subset=["Datum", "Kategorie"])
+            st.session_state.eigene_uebungen = pd.concat(
+                [st.session_state.eigene_uebungen, neue_zeilen],
+                ignore_index=True,
+            )
+            _speichere_nutzer_df(
+                "eigene_uebungen", st.session_state.eigene_uebungen
+            )
+            st.session_state.eigene_uebung_import_aktiv = False
+            st.success(f"{len(neue_zeilen)} Zeilen importiert!")
+            st.rerun()
+        except Exception as e:
+          st.error(f"Excel-Datei konnte nicht gelesen werden: {e}")
+
+      if st.button("Abbrechen", key="uebung_import_cancel_btn"):
+        st.session_state.eigene_uebung_import_aktiv = False
+        st.rerun()
+
+    uebungen_df = st.session_state.eigene_uebungen
+    if uebungen_df.empty:
+      st.info("Noch keine eigenen Übungen erfasst.")
+    else:
+      uebungen_kategorien = list(UEBUNG_UNTERKATEGORIEN.keys())
+      uebungen_icons = {
+          "Ausdauer": "🏃‍♂️",
+          "Kraft": "🏋️‍♂️",
+          "Beweglichkeit": beweglichkeit_icon_html(26),
+          "Balance": balance_icon_html(26),
+          "Ernährung": "🍽️",
+          "Gesamtbefinden": "😊",
+      }
+
+      u_kat_col1, u_kat_col2, u_kat_col3, u_kat_col4, u_kat_col5, u_kat_col6 = (
+          st.columns(6)
+      )
+      for spalte, kat in zip(
+          [u_kat_col1, u_kat_col2, u_kat_col3, u_kat_col4, u_kat_col5,
+           u_kat_col6],
+          uebungen_kategorien,
+      ):
+        with spalte:
+          anzahl = len(uebungen_df[uebungen_df["Kategorie"] == kat])
+          render_arsenal_tile(
+              uebungen_icons.get(kat, "📌"), kat, anzahl,
+              state_key="uebungen_detail_kat", button_prefix="uebungtile",
+          )
+
+      # Detail-Liste für die angeklickte Kategorie
+      aktive_uebungen_kat = st.session_state.get("uebungen_detail_kat")
+      if aktive_uebungen_kat is not None:
+        kat_eintraege = uebungen_df[
+            uebungen_df["Kategorie"] == aktive_uebungen_kat
+        ]
+        st.write("---")
+        st.markdown(f"#### {aktive_uebungen_kat} ({len(kat_eintraege)})")
+        if kat_eintraege.empty:
+          st.info(f"Noch keine Einträge für {aktive_uebungen_kat}.")
+        else:
+          anzeige_spalten = [
+              c
+              for c in [
+                  "Datum", "Unterkategorie", "Dauer (Min.)", "Sätze",
+                  "Wiederholungen", "Notizen", "Link", "Bild",
+              ]
+              if c in kat_eintraege.columns
+          ]
+          st.dataframe(
+              kat_eintraege[anzeige_spalten].sort_values("Datum"),
+              use_container_width=True,
+              hide_index=True,
+              column_config={
+                  "Bild": st.column_config.ImageColumn("Bild"),
+                  "Link": st.column_config.LinkColumn("Link"),
+              },
+          )
+        if st.button("✕ Schließen", key="uebungen_detail_schliessen_btn"):
+          st.session_state["uebungen_detail_kat"] = None
+          st.rerun()
+
+      # Falls Einträge eine Kategorie außerhalb der Standardliste haben
+      sonstige_uebungen = uebungen_df[
+          ~uebungen_df["Kategorie"].isin(uebungen_kategorien)
+      ]
+      if not sonstige_uebungen.empty:
+        with st.expander(f"Sonstige Kategorien ({len(sonstige_uebungen)})"):
+          st.dataframe(
+              sonstige_uebungen,
+              use_container_width=True,
+              column_config={
+                  "Bild": st.column_config.ImageColumn("Bild"),
+                  "Link": st.column_config.LinkColumn("Link"),
+              },
+          )
+
+      st.write("---")
+      st.markdown("#### 🔍 Trainingsnotizen filtern")
+      with st.container(key="uebungen_filter_row"):
+        f_col1, f_col2, f_col3 = st.columns(3)
+        with f_col1:
+          f_kategorie = st.selectbox(
+              "Kategorie", ["Alle Kategorien"] + uebungen_kategorien,
+              key="uebungen_filter_kategorie",
+          )
+        with f_col2:
+          if f_kategorie == "Alle Kategorien":
+            f_unterkategorie_optionen = sorted(
+                uebungen_df["Unterkategorie"].dropna().unique().tolist()
+            )
+          else:
+            f_unterkategorie_optionen = UEBUNG_UNTERKATEGORIEN.get(
+                f_kategorie, []
+            )
+          f_unterkategorie = st.selectbox(
+              "Unterkategorie",
+              ["Alle Unterkategorien"] + list(f_unterkategorie_optionen),
+              key="uebungen_filter_unterkategorie",
+          )
+        with f_col3:
+          f_zeitraum = st.selectbox(
+              "Zeitraum",
+              ["Alle", "Letzte Woche", "Letzter Monat", "Letztes Jahr"],
+              key="uebungen_filter_zeitraum",
+          )
+
+      gefilterte_df = uebungen_df.copy()
+      if f_kategorie != "Alle Kategorien":
+        gefilterte_df = gefilterte_df[
+            gefilterte_df["Kategorie"] == f_kategorie
+        ]
+      if f_unterkategorie != "Alle Unterkategorien":
+        gefilterte_df = gefilterte_df[
+            gefilterte_df["Unterkategorie"] == f_unterkategorie
+        ]
+      if f_zeitraum != "Alle":
+        zeitraum_tage = {
+            "Letzte Woche": 7,
+            "Letzter Monat": 30,
+            "Letztes Jahr": 365,
+        }[f_zeitraum]
+        stichtag = str(heute - datetime.timedelta(days=zeitraum_tage))
+        gefilterte_df = gefilterte_df[gefilterte_df["Datum"] >= stichtag]
+
+      st.caption(f"{len(gefilterte_df)} von {len(uebungen_df)} Einträgen")
+      if gefilterte_df.empty:
+        st.info("Keine Einträge für die gewählten Filter gefunden.")
+      else:
+        f_anzeige_spalten = [
+            c
+            for c in [
+                "Datum", "Kategorie", "Unterkategorie", "Dauer (Min.)",
+                "Sätze", "Wiederholungen", "Notizen", "Link", "Bild",
+            ]
+            if c in gefilterte_df.columns
+        ]
+        st.dataframe(
+            gefilterte_df[f_anzeige_spalten].sort_values(
+                "Datum", ascending=False
+            ),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Bild": st.column_config.ImageColumn("Bild"),
+                "Link": st.column_config.LinkColumn("Link"),
+            },
+        )
+
+      st.write("")
+
+      @st.cache_data
+      def convert_uebungen_df_to_excel(dataframe):
+        from io import BytesIO
+
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+          dataframe.to_excel(
+              writer, index=False, sheet_name="Eigene Übungen"
+          )
+        return output.getvalue()
+
+      uebungen_excel_data = convert_uebungen_df_to_excel(uebungen_df)
+      st.download_button(
+          label="📥 Als Excel-Datei herunterladen",
+          data=uebungen_excel_data,
+          file_name="Eigene_Uebungen.xlsx",
+          mime=(
+              "application/vnd.openxmlformats-officedocument"
+              ".spreadsheetml.sheet"
+          ),
+          key="uebungen_download_btn",
+      )
+
+# ----------------------------------------------------
+# 2. ÜBUNGSARSENAL (direkt unter dem Tagebuch, keine eigene Seite mehr)
+# ----------------------------------------------------
+if True:
+  st.write("---")
+  st.title("🏋️‍♀️ Übungsarsenal")
+  st.write("Deine Sammlung von Links, Bereichen und Übungs-Hinweisen.")
+
+  with st.container(key="arsenalcard"):
+    if st.session_state.arsenal.empty:
+      st.info("Noch keine Einträge im Übungsarsenal.")
+    else:
+      arsenal_df = st.session_state.arsenal
+      arsenal_icons = {
+          "Ausdauer": "🏃‍♂️",
+          "Kraft": "🏋️‍♂️",
+          "Beweglichkeit": beweglichkeit_icon_html(26),
+          "Balance": balance_icon_html(26),
+          "Ernährung": "🍽️",
+          "Gesamtbefinden": "😊",
+      }
+
+      a_col1, a_col2, a_col3, a_col4, a_col5, a_col6 = st.columns(6)
+      for spalte, kat in zip(
+          [a_col1, a_col2, a_col3, a_col4, a_col5, a_col6],
+          ARSENAL_KATEGORIEN,
+      ):
+        with spalte:
+          anzahl = len(arsenal_df[arsenal_df["Kategorie"] == kat])
+          render_arsenal_tile(arsenal_icons.get(kat, "📌"), kat, anzahl)
+
+      # Detail-Liste für die angeklickte Kategorie
+      aktive_kat = st.session_state.get("arsenal_detail_kat")
+      if aktive_kat is not None:
+        kat_eintraege = arsenal_df[arsenal_df["Kategorie"] == aktive_kat]
+        st.write("---")
+        st.markdown(f"#### {aktive_kat} ({len(kat_eintraege)})")
+        if kat_eintraege.empty:
+          st.info(f"Noch keine Einträge für {aktive_kat}.")
+        else:
+          for _, eintrag in kat_eintraege.iterrows():
+            with st.container(border=True):
+              st.markdown(
+                  f"<div style='display:flex; justify-content:space-between;"
+                  f" align-items:center; flex-wrap:wrap; gap:6px;'>"
+                  f"<span style='font-weight:700; font-size:16px;'>"
+                  f"{eintrag.get('Bereich / Übung', '')}</span>"
+                  f"<span style='background:#e2efe3; color:#2f5e45;"
+                  f" padding:2px 10px; border-radius:12px; font-size:12px;"
+                  f" font-weight:600; white-space:nowrap;'>"
+                  f"{eintrag.get('Typ', '')}</span></div>",
+                  unsafe_allow_html=True,
+              )
+              if eintrag.get("Beschreibung"):
+                st.write(eintrag["Beschreibung"])
+              if eintrag.get("Link"):
+                st.markdown(f"🔗 [{eintrag['Link']}]({eintrag['Link']})")
+              if eintrag.get("Bild"):
+                st.image(eintrag["Bild"], use_container_width=True)
+        if st.button("✕ Schließen", key="arsenal_detail_schliessen_btn"):
+          st.session_state["arsenal_detail_kat"] = None
+          st.rerun()
+
+      # Falls Einträge eine Kategorie außerhalb der Standardliste haben
+      # (z.B. durch ältere Daten), trotzdem anzeigen statt zu verschlucken
+      sonstige = arsenal_df[~arsenal_df["Kategorie"].isin(ARSENAL_KATEGORIEN)]
+      if not sonstige.empty:
+        with st.expander(f"Sonstige ({len(sonstige)})"):
+          for _, eintrag in sonstige.iterrows():
+            with st.container(border=True):
+              st.markdown(f"**{eintrag.get('Bereich / Übung', '')}**")
+              if eintrag.get("Beschreibung"):
+                st.write(eintrag["Beschreibung"])
+              if eintrag.get("Link"):
+                st.markdown(f"🔗 [{eintrag['Link']}]({eintrag['Link']})")
+              if eintrag.get("Bild"):
+                st.image(eintrag["Bild"], use_container_width=True)
+
+    st.write("")
+    if "arsenal_form_aktiv" not in st.session_state:
+      st.session_state.arsenal_form_aktiv = False
+
+    if not st.session_state.arsenal_form_aktiv:
+      if st.button(
+          "＋ Neuen Link / Eintrag hinzufügen",
+          key="btn_open_arsenal_form",
+          type="primary",
+          use_container_width=True,
+      ):
+        st.session_state.arsenal_form_aktiv = True
+        st.rerun()
+    else:
+      st.subheader("Neuen Link / Eintrag hinzufügen")
+      kategorie = st.selectbox(
+          "Kategorie", ARSENAL_KATEGORIEN, key="arsenal_kategorie"
+      )
+      titel = st.text_input(
+          "Titel (z. B. \"Kräftigung Rumpfmuskulatur\")",
+          key="arsenal_titel",
+      )
+      typ = st.selectbox("Typ", ARSENAL_TYPEN, key="arsenal_typ")
+      link = st.text_input("Link / URL", key="arsenal_link")
+      beschreibung = st.text_area(
+          "Beschreibung / Notiz", key="arsenal_beschreibung"
+      )
+      bild_upload = st.file_uploader(
+          "Screenshot / Bild zur Übung (optional)",
+          type=["png", "jpg", "jpeg"],
+          key="arsenal_bild",
+      )
+
+      col_a1, col_a2 = st.columns(2)
+      with col_a1:
+        arsenal_submitted = st.button(
+            "Hinzufügen",
+            key="arsenal_submit_btn",
+            type="primary",
+            use_container_width=True,
+        )
+      with col_a2:
+        arsenal_cancelled = st.button(
+            "Abbrechen",
+            key="arsenal_cancel_btn",
+            use_container_width=True,
+        )
+
+      if arsenal_submitted:
+        bild_data_uri = ""
+        if bild_upload is not None:
+          bild_data_uri = _bild_datei_zu_data_uri(bild_upload)
+
+        neuer_link = pd.DataFrame(
+            [{
+                "Kategorie": kategorie,
+                "Typ": typ,
+                "Bereich / Übung": titel,
+                "Link": link,
+                "Beschreibung": beschreibung,
+                "Bild": bild_data_uri,
+            }]
+        )
+        st.session_state.arsenal = pd.concat(
+            [st.session_state.arsenal, neuer_link], ignore_index=True
+        )
+        _speichere_nutzer_df("arsenal", st.session_state.arsenal)
+        st.session_state.arsenal_form_aktiv = False
+        st.success("Erfolgreich hinzugefügt!")
+        st.rerun()
+      if arsenal_cancelled:
+        st.session_state.arsenal_form_aktiv = False
+        st.rerun()
