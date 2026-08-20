@@ -8,7 +8,7 @@ if st.button(
       st.rerun()
 
   # Formular für Eintrag (außerhalb des Kastens)
-  if st.session_state.get("eintrag_modal_aktiv", False):
+if st.session_state.get("eintrag_modal_aktiv", False):
     st.write("### 📝 Neuen Eintrag erfassen")
     # Kein st.form() hier: Felder innerhalb eines Formulars lösen erst
     # beim Absenden einen Rerun aus, daher würden die Zusatzfelder nicht
