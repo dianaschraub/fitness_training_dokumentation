@@ -1,1 +1,5 @@
-
+# Diese Datei im Repo unter  .streamlit/config.toml  ablegen.
+# Sie färbt die Streamlit-Bedienelemente (Auswahl bei Ernährung, Häkchen,
+# Fokus-Rahmen) grün statt rot - im hellen und im dunklen Design.
+[theme]
+primaryColor = "#1f8556"
