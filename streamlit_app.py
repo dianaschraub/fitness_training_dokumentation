@@ -287,7 +287,7 @@ def render_icon_box(
   label_html = (
       f"<span class='icon-box-label' style='font-size: {label_font_size}px;"
       f" font-weight: 700; letter-spacing: 0.2px;"
-      f" line-height: 1.15;'>{kat_name}</span>"
+      f" line-height: 1.15;'>{kachel_name(kat_name)}</span>"
       if kat_name
       else ""
   )
@@ -317,6 +317,20 @@ def render_icon_box(
       st.rerun()
 
 
+# Weiche Trennstellen (&shy;) für lange Kategorienamen: Auf schmalen
+# Handy-Kacheln wird dort getrennt statt abgeschnitten; ist genug Platz,
+# bleibt das Wort unverändert.
+KACHEL_TRENNSTELLEN = {
+    "Beweglichkeit": "Beweg&shy;lichkeit",
+    "Gesamtbefinden": "Gesamt&shy;befinden",
+    "Ernährung": "Ernäh&shy;rung",
+}
+
+
+def kachel_name(kat_name):
+  return KACHEL_TRENNSTELLEN.get(kat_name, kat_name)
+
+
 def render_arsenal_tile(
     icon_html, kat_name, anzahl, box_height=88,
     state_key="arsenal_detail_kat", button_prefix="arsenaltile",
@@ -333,7 +347,7 @@ def render_arsenal_tile(
       f" align-items:center; justify-content:center; gap:2px;'>"
       f"<span class='icon-box-label' style='font-size:12px; font-weight:700;"
       f" letter-spacing:0.2px;"
-      f" line-height:1.15;'>{kat_name}</span>"
+      f" line-height:1.15;'>{kachel_name(kat_name)}</span>"
       f"<span style='height:38px; display:flex; align-items:center;"
       f" justify-content:center; font-size:26px; line-height:1;'>"
       f"{icon_html}</span>"
@@ -1428,7 +1442,7 @@ if True:
               [data-testid="stWidgetLabel"],
               [data-testid="stMetricLabel"],
               [data-testid="stMetricValue"]
-          ) *:not(.chip):not([data-testid="stAlert"] *):not([data-testid="stButtonGroup"] *) {
+          ) *:not(.chip):not([data-testid="stAlert"] *):not([data-testid="stButtonGroup"] *):not(button[kind="primary"] *) {
               color: #ffffff !important;
           }
 
@@ -1519,6 +1533,19 @@ if True:
               background: rgba(0, 0, 0, 0.25);
               border: 1px solid rgba(255, 255, 255, 0.25);
           }
+          /* Auf dem Handy umbrechender Text darf die Karte höher machen,
+             statt herauszulaufen - dafür etwas kompakter. */
+          @media (max-width: 480px) {
+              .stat-card {
+                  padding: 10px !important;
+              }
+              .stat-card h4 {
+                  font-size: 14px !important;
+              }
+              .stat-card p {
+                  font-size: 12.5px !important;
+              }
+          }
           .gesamt-card {
               background: rgba(0, 0, 0, 0.30);
               border: 2px solid var(--rand);
@@ -1536,6 +1563,12 @@ if True:
               font-weight: 700 !important;
               border: none !important;
               box-shadow: 0 1px 3px rgba(0, 0, 0, 0.30);
+          }
+          /* Die Beschriftung sitzt in einem eigenen <p>, das sonst die
+             weiße Bereichsschrift erbt - dann wäre sie auf dem hellen
+             Knopf kaum lesbar. */
+          div[class*="st-key-bereich_"] div.stButton button[kind="primary"] p {
+              color: var(--knopf-text) !important;
           }
           div.stButton button[kind="primary"]:hover {
               filter: brightness(0.93);
@@ -1651,7 +1684,12 @@ if True:
               flex-direction: row !important;
               gap: 4px !important;
           }
-          div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+          /* Neuere Streamlit-Versionen nennen die Spalten "stColumn"
+             statt "column" - beide Namen abdecken, sonst bekommt jede
+             Spalte auf dem Handy fast die volle Bildschirmbreite und die
+             Kacheln laufen rechts aus dem Bild. */
+          div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
+          div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
               min-width: 0 !important;
           }
 
@@ -2271,7 +2309,7 @@ if True:
         with c1:
           st.markdown(
               f"""
-                      <div class="stat-card" style="padding: 15px; border-radius: 14px; margin-bottom: 10px; height: 90px;">
+                      <div class="stat-card" style="padding: 15px; border-radius: 14px; margin-bottom: 10px; min-height: 90px; box-sizing: border-box;">
                           <h4 style="margin: 0; font-size: 16px;">{kat1[0]}</h4>
                           <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.8;">{sym1} {text1}</p>
                       </div>
@@ -2283,7 +2321,7 @@ if True:
         with c2:
           st.markdown(
               f"""
-                      <div class="stat-card" style="padding: 15px; border-radius: 14px; margin-bottom: 10px; height: 90px;">
+                      <div class="stat-card" style="padding: 15px; border-radius: 14px; margin-bottom: 10px; min-height: 90px; box-sizing: border-box;">
                           <h4 style="margin: 0; font-size: 16px;">{kat2[0]}</h4>
                           <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.8;">{sym2} {text2}</p>
                       </div>
