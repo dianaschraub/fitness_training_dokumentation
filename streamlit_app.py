@@ -1213,6 +1213,58 @@ STIMMUNG_SMILEYS = [
     ("😊 Gut", "😊 Gut"),
 ]
 
+# Gesamtbefinden wird ohne Minuten erfasst (die Stimmung steht in der
+# Spalte "Unterkategorie"). Kacheln und Wochenauswertung zählen deshalb
+# Einträge bzw. Tage mit Eintrag statt Minuten.
+STIMMUNG_WERTE = {"😊 Gut": 2, "😐 Neutral": 1, "😞 Schlecht": 0}
+
+
+def stimmung_eintraege(start, ende):
+  """Gesamtbefinden-Einträge zwischen start und ende (jeweils inklusive)."""
+  df_p = st.session_state.protokoll
+  if df_p.empty:
+    return df_p
+  return df_p[
+      (df_p["Kategorie"] == "Gesamtbefinden")
+      & (df_p["Datum"] >= str(start))
+      & (df_p["Datum"] <= str(ende))
+  ]
+
+
+def stimmung_tage(start, ende):
+  """Anzahl der Tage mit mindestens einem Stimmungseintrag."""
+  eintraege = stimmung_eintraege(start, ende)
+  return 0 if eintraege.empty else int(eintraege["Datum"].nunique())
+
+
+def stimmung_symbol_heute(datum):
+  """Smiley des letzten Stimmungseintrags an diesem Tag (sonst 😊)."""
+  eintraege = stimmung_eintraege(datum, datum)
+  if eintraege.empty:
+    return "😊"
+  return str(eintraege["Unterkategorie"].iloc[-1]).split(" ")[0] or "😊"
+
+
+def stimmung_zusammenfassung(start, ende):
+  """(Anzahl, Text, Ampel) für die Wochenauswertung."""
+  eintraege = stimmung_eintraege(start, ende)
+  if eintraege.empty:
+    return 0, "Noch keine Einträge", "⚪"
+  anzahl = len(eintraege)
+  menge = "1 Eintrag" if anzahl == 1 else f"{anzahl} Einträge"
+  werte = [
+      STIMMUNG_WERTE[u] for u in eintraege["Unterkategorie"]
+      if u in STIMMUNG_WERTE
+  ]
+  if not werte:
+    return anzahl, menge, "⚪"
+  schnitt = sum(werte) / len(werte)
+  if schnitt >= 1.5:
+    return anzahl, f"{menge} · überwiegend gut", "🟢"
+  if schnitt >= 0.75:
+    return anzahl, f"{menge} · gemischt", "🟡"
+  return anzahl, f"{menge} · eher schlecht", "🔴"
+
 if "arsenal" not in st.session_state:
   st.session_state.arsenal = _lade_nutzer_df("arsenal")
   if st.session_state.arsenal.empty:
@@ -1293,8 +1345,18 @@ def _dunkles_diagramm(daten, spalte, wertebereich=None):
           strokeWidth=2.5,
       )
       .encode(
-          x=alt.X("Datum:T", title=None),
-          y=alt.Y(f"{spalte}:Q", title=None, scale=y_skala),
+          # Deutsche Beschriftung: "07.10." statt "Wed 07", "10.000"
+          # statt "10,000" und "71,5" statt "71.5"
+          x=alt.X("Datum:T", title=None, axis=alt.Axis(format="%d.%m.")),
+          y=alt.Y(
+              f"{spalte}:Q", title=None, scale=y_skala,
+              axis=alt.Axis(
+                  labelExpr=(
+                      "replace(replace(replace(format(datum.value, ',~f'),"
+                      " /,/g, '#'), /[.]/g, ','), /#/g, '.')"
+                  )
+              ),
+          ),
       )
       .properties(height=220)
       .configure(background="transparent")
@@ -1718,6 +1780,41 @@ if True:
               }
           }
 
+          /* Knopftexte dürfen auf dem Handy umbrechen, statt mit "..."
+             abgeschnitten zu werden (z.B. "Schritte/Gewicht eintragen"
+             neben "CSV importieren"). */
+          @media (max-width: 480px) {
+              div.stButton button,
+              div.stDownloadButton button {
+                  height: auto !important;
+                  min-height: 2.5rem;
+                  padding-top: 6px !important;
+                  padding-bottom: 6px !important;
+              }
+              div.stButton button *,
+              div.stDownloadButton button * {
+                  white-space: normal !important;
+                  overflow: visible !important;
+                  text-overflow: clip !important;
+                  line-height: 1.25 !important;
+              }
+          }
+
+          /* Download-Knöpfe in den Bereichen wie die übrigen sekundären
+             Knöpfe: dunkel mit weißer Schrift (sonst weiße Schrift auf
+             weißem Grund) */
+          div[class*="st-key-bereich_"] div.stDownloadButton button {
+              background-color: rgba(0, 0, 0, 0.30) !important;
+              color: #ffffff !important;
+              border: 1px solid rgba(255, 255, 255, 0.40) !important;
+              border-radius: 12px !important;
+              font-weight: 600 !important;
+          }
+          div[class*="st-key-bereich_"] div.stDownloadButton button:hover {
+              background-color: rgba(255, 255, 255, 0.18) !important;
+              border-color: var(--knopf) !important;
+          }
+
           /* Plus/Minus-Stepper-Buttons beim Minuten-Eingabefeld ausblenden */
           button[data-testid="stNumberInputStepDown"],
           button[data-testid="stNumberInputStepUp"] {
@@ -1874,8 +1971,9 @@ if True:
             click_key=("woche", "Ernährung"), kat_name="Ernährung",
         )
       with mini_col6:
+        # Ring: an wie vielen der 7 Tage die Stimmung eingetragen wurde
         render_icon_box(
-            "😊", get_cat_minutes("Gesamtbefinden"), 90,
+            "😊", stimmung_tage(start_der_woche, ende_der_woche), 7,
             box_height=108, icon_font_size=26, ring_size=34,
             click_key=("woche", "Gesamtbefinden"), kat_name="Gesamtbefinden",
         )
@@ -1926,8 +2024,9 @@ if True:
             ),
         )
       with t_col6:
+        # Heute: Smiley des letzten Eintrags, Ring voll, sobald einer da ist
         render_icon_box(
-            "😊", get_today_minutes("Gesamtbefinden"), 90,
+            stimmung_symbol_heute(heute), stimmung_tage(heute, heute), 1,
             box_height=98, icon_font_size=22, ring_size=28,
             click_key=("heute", "Gesamtbefinden"), kat_name="Gesamtbefinden",
         )
@@ -2275,6 +2374,9 @@ if True:
           else:
             symbol = "🔴"
           return anzahl, f"{anzahl} von 21 Mahlzeiten umgesetzt", symbol
+        if kat_name == "Gesamtbefinden":
+          # Gesamtbefinden hat keine Minuten - Stimmungen auswerten
+          return stimmung_zusammenfassung(start_der_woche, ende_der_woche)
         if woche_df_all.empty or kat_name not in woche_df_all["Kategorie"].values:
           return 0, "Noch keine Einträge", "⚪"
         kat_df = woche_df_all[woche_df_all["Kategorie"] == kat_name]
@@ -2715,7 +2817,7 @@ if True:
       }
 
       tab_protokoll, tab_uebungen = st.tabs(
-          ["Tagebuch-Einträge", "Eigene Übungen (Name, Sätze, Wiederholungen, Dauer)"]
+          ["Tagebuch-Einträge", "Eigene Übungen"]
       )
 
       with tab_protokoll:
@@ -2775,6 +2877,7 @@ if True:
           st.dataframe(
               gefilterter_df.sort_values("Datum", ascending=False),
               use_container_width=True,
+              hide_index=True,
               column_config={
                   "Verknüpftes Bild": st.column_config.ImageColumn(
                       "Verknüpftes Bild"
@@ -3083,6 +3186,7 @@ if True:
               st.dataframe(
                   sonstige_uebungen,
                   use_container_width=True,
+                  hide_index=True,
                   column_config={
                       "Bild": st.column_config.ImageColumn("Bild"),
                       "Link": st.column_config.LinkColumn("Link"),
