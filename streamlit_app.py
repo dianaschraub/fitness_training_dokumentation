@@ -533,6 +533,20 @@ def _speichere_nutzer_df(tab_name, df):
   )
 
 
+def speichere_tagebuch(neu_df):
+  """Die Anzeige erst nach bestätigtem Schreiben aktualisieren."""
+  try:
+    with st.spinner("Eintrag wird gespeichert …"):
+      _speichere_nutzer_df("protokoll", neu_df)
+  except Exception:
+    st.error(
+        "Speichern fehlgeschlagen. Deine Eingaben bleiben im Formular. "
+        "Bitte prüfe die Verbindung und versuche es erneut."
+    )
+    st.stop()
+  st.session_state.protokoll = neu_df
+
+
 def _lade_koerpergroesse():
   arbeitsblatt = _worksheet("profil", ["Koerpergroesse_cm"])
   alle_zeilen = arbeitsblatt.get_all_records()
@@ -767,9 +781,8 @@ def ernaehrung_tagesformular(datum):
     # Alte Ernährungs-Zeilen dieses Tages entfernen, neue anhängen
     rest = df_alt[~ist_ernaehrung_tag]
     neu_df = pd.DataFrame(neue_zeilen, columns=df_alt.columns)
-    st.session_state.protokoll = pd.concat([rest, neu_df], ignore_index=True)
-    # Nur EIN Schreibvorgang für alle Mahlzeiten
-    _speichere_nutzer_df("protokoll", st.session_state.protokoll)
+    # Nur EIN Schreibvorgang; die Anzeige bleibt bei Fehlern unverändert.
+    speichere_tagebuch(pd.concat([rest, neu_df], ignore_index=True))
     return True
   return False
 
@@ -1063,6 +1076,9 @@ def merke_ton(art):
 
 
 def melde_gespeichert():
+  st.session_state["speicher_meldung"] = (
+      "✓ Erfolgreich gespeichert · Deine Übersicht ist aktualisiert."
+  )
   merke_ton("pling")
 
 
@@ -1208,9 +1224,9 @@ def serie_dialog():
 
 # Smileys für "Gesamtbefinden" im Tagebuch-Formular
 STIMMUNG_SMILEYS = [
-    ("😞 Schlecht", "😞 Schlecht"),
-    ("😐 Neutral", "😐 Neutral"),
     ("😊 Gut", "😊 Gut"),
+    ("😐 Neutral", "😐 Neutral"),
+    ("😞 Schlecht", "😞 Schlecht"),
 ]
 
 # Gesamtbefinden wird ohne Minuten erfasst (die Stimmung steht in der
@@ -1375,6 +1391,10 @@ def _dunkles_diagramm(daten, spalte, wertebereich=None):
 # 1. STARTSEITE & TAGEBUCH
 # ----------------------------------------------------
 if True:
+  if meldung := st.session_state.pop("speicher_meldung", None):
+    st.success(meldung)
+  if warnung := st.session_state.pop("speicher_warnung", None):
+    st.warning(warnung)
   st.toggle("🔔 Töne", value=True, key="ton_an")
   spiele_ton_falls_noetig()
   zeige_feier_falls_noetig()
@@ -1473,6 +1493,42 @@ if True:
     st.markdown(
         """
           <style>
+          /* Während eines Reruns bleibt die Übersicht gut lesbar.
+             Der Spinner zeigt den tatsächlichen Speichervorgang an. */
+          div.st-key-bereich_tagebuch [data-stale="true"] {
+              opacity: 1;
+          }
+          div.st-key-formcard {
+              background: #102b20 !important;
+              box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+          }
+          div.st-key-entry_smiley [role="radiogroup"] {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 10px;
+          }
+          div.st-key-entry_smiley [role="radiogroup"] > label {
+              flex: 1 1 100px;
+              min-height: 64px;
+              padding: 12px;
+              border: 2px solid #527863;
+              border-radius: 14px;
+              background: #142e23;
+              cursor: pointer;
+          }
+          div.st-key-entry_smiley label:has(input:checked) {
+              border-color: #4ade80;
+              background: #24583a;
+              box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.18);
+          }
+          div.st-key-entry_smiley label:has(input:focus-visible) {
+              outline: 3px solid #fbbf24;
+              outline-offset: 3px;
+          }
+          div.st-key-entry_smiley p {
+              font-size: 1.15rem;
+              font-weight: 600;
+          }
           :root {
               --karte: #038834;
               --rand: #3fd37c;
@@ -2202,13 +2258,16 @@ if True:
 
           elif selected_cat == "Gesamtbefinden":
             smiley_label = st.radio(
-                "Stimmung wählen",
+                "Wie fühlst du dich insgesamt?",
                 [label for label, _ in STIMMUNG_SMILEYS],
+                index=None,
                 horizontal=True,
                 key="entry_smiley",
             )
+            st.caption("Wähle einen Smiley. Eine Notiz kannst du unten ergänzen.")
             selected_unterkat = next(
-                wert for label, wert in STIMMUNG_SMILEYS if label == smiley_label
+                (wert for label, wert in STIMMUNG_SMILEYS if label == smiley_label),
+                "",
             )
 
           else:
@@ -2293,6 +2352,9 @@ if True:
             )
 
           if save_btn:
+            if selected_cat == "Gesamtbefinden" and not selected_unterkat:
+              st.warning("Bitte wähle zuerst einen Smiley für dein Gesamtbefinden.")
+              st.stop()
             neuer_eintrag = pd.DataFrame(
                 [{
                     "Datum": str(datum),
@@ -2309,10 +2371,10 @@ if True:
             _vor_min = wochenminuten(
                 st.session_state.protokoll, selected_cat, datum
             )
-            st.session_state.protokoll = pd.concat(
+            neues_protokoll = pd.concat(
                 [st.session_state.protokoll, neuer_eintrag], ignore_index=True
             )
-            _speichere_nutzer_df("protokoll", st.session_state.protokoll)
+            speichere_tagebuch(neues_protokoll)
             pruefe_ziel_feier(selected_cat, datum, _vor_min)
             if weitere_details_aktiv:
               wd_bild_data_uri = ""
@@ -2331,13 +2393,20 @@ if True:
                       "Bild": wd_bild_data_uri,
                   }]
               )
-              st.session_state.eigene_uebungen = pd.concat(
+              neue_uebungen = pd.concat(
                   [st.session_state.eigene_uebungen, neue_uebung],
                   ignore_index=True,
               )
-              _speichere_nutzer_df(
-                  "eigene_uebungen", st.session_state.eigene_uebungen
-              )
+              try:
+                _speichere_nutzer_df("eigene_uebungen", neue_uebungen)
+              except Exception:
+                st.session_state["speicher_warnung"] = (
+                    "Der Tagebucheintrag ist gespeichert. Die zusätzlichen "
+                    "Übungsdetails konnten nicht gespeichert werden. "
+                    "Bitte ergänze sie unter Eigene Übungen."
+                )
+              else:
+                st.session_state.eigene_uebungen = neue_uebungen
             st.session_state.eintrag_modal_aktiv = False
             melde_gespeichert()
             st.success("Eintrag erfolgreich gespeichert!")
@@ -3448,3 +3517,4 @@ if True:
         if arsenal_cancelled:
           st.session_state.arsenal_form_aktiv = False
           st.rerun()
+
