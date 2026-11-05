@@ -1,0 +1,8 @@
+# Helle Grundflächen und Salbeigrün für native Streamlit-Bedienelemente.
+[theme]
+base = "light"
+primaryColor = "#496f59"
+backgroundColor = "#f5f4ef"
+secondaryBackgroundColor = "#eef1eb"
+textColor = "#293b32"
+font = "sans serif"

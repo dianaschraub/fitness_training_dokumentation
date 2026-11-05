@@ -11,15 +11,8 @@ from google.oauth2.service_account import Credentials
 from PIL import Image
 
 # --- Farbpalette ----------------------------------------------------
-# Kräftige Mitteltöne, die auf hellem UND dunklem Hintergrund gut zu
-# erkennen sind (Kontrast zur Karte mindestens ca. 3:1, weiße Schrift auf
-# Grün/Rot/Blau mindestens 4,5:1, dunkle Schrift auf Gelb). Alle Flächen
-# und Texte, die vom Design (hell/dunkel) abhängen, benutzen dagegen die
-# Streamlit-Textfarbe ("currentColor" / "inherit") oder durchscheinende
-# Tönungen - so bleibt alles in beiden Designs lesbar.
-# Ampel-Farben für Ringe, Punkte und das Wochenraster. Die Kacheln in den
-# Bereichen sind immer dunkel hinterlegt, deshalb sind das helle, leuchtende
-# Farben (gut sichtbar auf Dunkel):
+# Helle Grundflächen und ruhige Bereichsfarben. Die bewährten Ampelfarben
+# bleiben erhalten; nur die kleinen Fortschrittsringe sind dunkel unterlegt.
 FARBE_GRUEN = "#4ade80"
 FARBE_GELB = "#fbbf24"
 FARBE_ROT = "#f87171"
@@ -27,23 +20,24 @@ FARBE_BLAU = "#60a5fa"
 FARBE_GRAU = "#9ca3af"
 FARBE_LEER = "rgba(255, 255, 255, 0.22)"  # leerer Ring-Bogen / leerer Punkt
 
-# Bereichsfarben. Jeder der vier Bereiche liegt auf einem fast schwarzen
-# Hintergrund; darin sitzt die große Kachel ("karte") in einer satten
-# Leuchtfarbe. Weiße Schrift auf "karte" hat mindestens ca. 4:1 Kontrast
-# (Blau ist bewusst etwas heller). "rand" ist der Rahmen der Kachel, "knopf"
-# der helle Button samt Icon-Kreis, "knopf_text" die dunkle Schrift darauf.
+# Bereichsfarben: zarte Tönung, dezenter Rand, kräftiger Akzent für
+# Hauptaktionen und ein getönter Icon-Kreis mit dunkler Beschriftung.
 BEREICHSFARBEN = {
-    "tagebuch": dict(  # Grün
-        karte="#038834", rand="#3fd37c", knopf="#c8f9dc", knopf_text="#064e2b"
+    "tagebuch": dict(  # Salbei
+        karte="#f1f6f0", rand="#d4e2d2", knopf="#496f59", knopf_text="#ffffff",
+        icon="#e2ede0", icon_text="#355440"
     ),
     "vitalwerte": dict(  # Blau
-        karte="#3d76f5", rand="#8fb0fa", knopf="#e2ebff", knopf_text="#1e3a8a"
+        karte="#f1f5f9", rand="#d5e0eb", knopf="#496b89", knopf_text="#ffffff",
+        icon="#e2ebf3", icon_text="#35546e"
     ),
     "notizen": dict(  # Violett
-        karte="#8c51f1", rand="#b591f6", knopf="#eadfff", knopf_text="#4c1d95"
+        karte="#f6f3fa", rand="#e2daed", knopf="#76618d", knopf_text="#ffffff",
+        icon="#ece5f4", icon_text="#604d75"
     ),
     "arsenal": dict(  # Orange
-        karte="#ce4805", rand="#ff8a4c", knopf="#ffe1cf", knopf_text="#7c2d12"
+        karte="#fbf3ef", rand="#edd9cd", knopf="#a15f47", knopf_text="#ffffff",
+        icon="#f4e3d9", icon_text="#844d39"
     ),
 }
 
@@ -62,8 +56,7 @@ def _bereichs_css():
 
 
 def bereich_banner(icon, titel, untertitel, bereich):
-  """Kopfzeile eines Bereichs (auf dem schwarzen Bereichshintergrund):
-  heller Icon-Kreis in der Bereichsfarbe, Titel und Untertitel in Weiß."""
+  """Einheitliche Kopfzeile mit zartem Icon-Kreis in der Bereichsfarbe."""
   f = BEREICHSFARBEN[bereich]
   untertitel_html = (
       f"<div class='bereich-kopf-sub'>{untertitel}</div>" if untertitel else ""
@@ -71,7 +64,7 @@ def bereich_banner(icon, titel, untertitel, bereich):
   return (
       f"<div class='bereich-kopf'>"
       f"<span class='bereich-kopf-icon'"
-      f" style='background:{f['knopf']}; color:{f['knopf_text']};'>{icon}</span>"
+      f" style='background:{f['icon']}; color:{f['icon_text']};'>{icon}</span>"
       f"<div><div class='bereich-kopf-titel'>{titel}</div>"
       f"{untertitel_html}</div></div>"
   )
@@ -931,7 +924,7 @@ def render_ernaehrung_wochenraster_html(start_der_woche):
       "🔵 bewusst ausgelassen</div>"
   )
   return (
-      "<div style='background:rgba(0,0,0,0.30); border-radius:12px;"
+      "<div class='ernaehrung-raster' style='background:#f5f7f3; border-radius:12px;"
       " padding:10px;'>"
       "<table style='width:100%; border-collapse:collapse;"
       " table-layout:fixed;'>"
@@ -1346,18 +1339,16 @@ if "vital_form_aktiv" not in st.session_state:
 if "vital_import_aktiv" not in st.session_state:
   st.session_state.vital_import_aktiv = False
 
-def _dunkles_diagramm(daten, spalte, wertebereich=None):
-  """Liniendiagramm mit weißen Linien/Beschriftungen auf transparentem
-  Grund. Die Vitalwerte-Kachel ist in beiden Designs farbig/dunkel, deshalb
-  bekommt das Diagramm feste helle Farben statt der Streamlit-Themenfarben."""
+def _vital_diagramm(daten, spalte, wertebereich=None):
+  """Kontrastreiche blaue Linie und dunkle Achsen auf der hellen Karte."""
   y_skala = (
       alt.Scale(domain=wertebereich) if wertebereich else alt.Scale(zero=True)
   )
   return (
       alt.Chart(daten)
       .mark_line(
-          point=alt.OverlayMarkDef(color="#ffffff", filled=True),
-          color="#ffffff",
+          point=alt.OverlayMarkDef(color="#496b89", filled=True),
+          color="#496b89",
           strokeWidth=2.5,
       )
       .encode(
@@ -1377,11 +1368,11 @@ def _dunkles_diagramm(daten, spalte, wertebereich=None):
       .properties(height=220)
       .configure(background="transparent")
       .configure_axis(
-          labelColor="#ffffff",
+          labelColor="#4f5e57",
           labelFontSize=11,
-          domainColor="rgba(255,255,255,0.55)",
-          tickColor="rgba(255,255,255,0.55)",
-          gridColor="rgba(255,255,255,0.22)",
+          domainColor="#cbd5ce",
+          tickColor="#cbd5ce",
+          gridColor="#e4e9e4",
       )
       .configure_view(strokeWidth=0)
   )
@@ -1499,8 +1490,8 @@ if True:
               opacity: 1;
           }
           div.st-key-formcard {
-              background: #102b20 !important;
-              box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+              background: #ffffff;
+              box-shadow: 0 4px 18px rgba(42, 59, 47, 0.05);
           }
           div.st-key-entry_smiley [role="radiogroup"] {
               display: flex;
@@ -1511,18 +1502,18 @@ if True:
               flex: 1 1 100px;
               min-height: 64px;
               padding: 12px;
-              border: 2px solid #527863;
+              border: 2px solid #ccdace;
               border-radius: 14px;
-              background: #142e23;
+              background: #ffffff;
               cursor: pointer;
           }
           div.st-key-entry_smiley label:has(input:checked) {
-              border-color: #4ade80;
-              background: #24583a;
-              box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.18);
+              border-color: #496f59;
+              background: #e8f1e5;
+              box-shadow: 0 0 0 2px rgba(73, 111, 89, 0.12);
           }
           div.st-key-entry_smiley label:has(input:focus-visible) {
-              outline: 3px solid #fbbf24;
+              outline: 3px solid #496f59;
               outline-offset: 3px;
           }
           div.st-key-entry_smiley p {
@@ -1530,59 +1521,71 @@ if True:
               font-weight: 600;
           }
           :root {
-              --karte: #038834;
-              --rand: #3fd37c;
-              --knopf: #c8f9dc;
-              --knopf-text: #064e2b;
+              --karte: #f1f6f0;
+              --rand: #d4e2d2;
+              --knopf: #496f59;
+              --knopf-text: #ffffff;
+              --text: #293b32;
+              --text-leise: #58675f;
+          }
+          [data-testid="stAppViewContainer"],
+          [data-testid="stHeader"] {
+              background: #f5f4ef;
+              color: var(--text);
           }
 
           /* Farben je Bereich (kommen aus BEREICHSFARBEN im Python-Code) */
           /*BEREICHS_VARS*/
 
-          /* Bereichshintergrund: fast schwarz, in hellem UND dunklem Design.
-             Alles darin ist auf Dunkel abgestimmt (weiße Schrift). */
+          /* Weiße Bereiche mit einer schmalen farbigen Oberkante. */
           div.st-key-bereich_tagebuch,
           div.st-key-bereich_vitalwerte,
           div.st-key-bereich_notizen,
           div.st-key-bereich_arsenal {
-              background-color: #0a0b0f;
+              background-color: #ffffff;
+              color: var(--text);
+              border: 1px solid var(--rand);
+              border-top: 4px solid var(--knopf);
               border-radius: 22px;
-              padding: 12px;
-              margin-bottom: 28px;
-              box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+              padding: 16px;
+              margin-bottom: 32px;
+              box-shadow: 0 4px 20px rgba(42, 59, 47, 0.05);
           }
 
-          /* Schrift in den Bereichen immer weiß (Ausnahmen: Chips und
-             Hinweis-Boxen behalten ihre eigenen Farben) */
+          /* Textfarbe nur an Text-Containern setzen. Buttons, Links,
+             Hinweisboxen und Statusanzeigen behalten eigene Farben. */
           div[class*="st-key-bereich_"] :is(
               [data-testid="stMarkdownContainer"],
               [data-testid="stCaptionContainer"],
               [data-testid="stWidgetLabel"],
               [data-testid="stMetricLabel"],
               [data-testid="stMetricValue"]
-          ) *:not(.chip):not([data-testid="stAlert"] *):not([data-testid="stButtonGroup"] *):not(button[kind="primary"] *) {
-              color: #ffffff !important;
+          ) {
+              color: var(--text);
+          }
+          div[class*="st-key-bereich_"] [data-testid="stCaptionContainer"] {
+              color: var(--text-leise);
           }
 
-          /* Die große Kachel jedes Bereichs: satte Leuchtfarbe, heller Rahmen */
+          /* Weiße Hauptkarten mit dezentem Rahmen. */
           div.st-key-dashcard,
           div.st-key-vitalcard,
           div.st-key-notizencard,
           div.st-key-arsenalcard,
           div.st-key-formcard {
-              background-color: var(--karte);
-              border: 2px solid var(--rand);
+              background-color: #ffffff;
+              border: 1px solid var(--rand);
               border-radius: 16px;
               padding: 20px;
               margin-bottom: 12px;
           }
 
-          /* Kopfzeile: heller Icon-Kreis + weißer Titel auf Schwarz */
+          /* Einheitliche Kopfzeilen auf hellen Flächen. */
           .bereich-kopf {
               display: flex;
               align-items: center;
               gap: 12px;
-              padding: 6px 6px 12px 6px;
+              padding: 6px 6px 18px 6px;
               margin: 0;
           }
           .bereich-kopf-icon {
@@ -1597,14 +1600,14 @@ if True:
               flex: none;
           }
           .bereich-kopf-titel {
-              color: #ffffff !important;
+              color: var(--text);
               font-size: 22px;
-              font-weight: 800;
+              font-weight: 700;
               line-height: 1.15;
               letter-spacing: 0.2px;
           }
           .bereich-kopf-sub {
-              color: #cbd5e1 !important;
+              color: var(--text-leise);
               font-size: 13px;
               font-weight: 500;
               margin-top: 2px;
@@ -1633,23 +1636,31 @@ if True:
               font-size: 14px;
           }
 
-          /* Kacheln (Woche/Heute, Arsenal): dunkle Fläche auf der Leuchtfarbe,
-             damit Ringe und Ampel-Farben gut zu erkennen sind */
+          /* Kleine Kacheln erhalten nur eine sanfte Bereichstönung. */
           .icon-box {
-              background: rgba(0, 0, 0, 0.30);
-              border: 1px solid rgba(255, 255, 255, 0.30);
+              background: var(--karte);
+              border: 1px solid var(--rand);
               border-bottom: none;
               border-radius: 14px 14px 0 0;
-              color: #ffffff;
+              color: var(--text);
           }
           .icon-box-label {
+              color: var(--text);
+          }
+          /* Kleine dunkle Ringflächen erhalten den Kontrast der Ampelfarben. */
+          .icon-box svg {
+              background: #293b32;
+              border-radius: 50%;
               color: #ffffff;
+          }
+          .ernaehrung-raster td > span {
+              box-shadow: 0 0 0 1px #728277;
           }
 
           /* Auswertungs-Karten, Gesamt-Karte und Chips */
           .stat-card {
-              background: rgba(0, 0, 0, 0.25);
-              border: 1px solid rgba(255, 255, 255, 0.25);
+              background: var(--karte);
+              border: 1px solid var(--rand);
           }
           /* Auf dem Handy umbrechender Text darf die Karte höher machen,
              statt herauszulaufen - dafür etwas kompakter. */
@@ -1665,27 +1676,24 @@ if True:
               }
           }
           .gesamt-card {
-              background: rgba(0, 0, 0, 0.30);
-              border: 2px solid var(--rand);
+              background: var(--karte);
+              border: 1px solid var(--rand);
           }
           .chip {
-              background: var(--knopf);
-              color: var(--knopf-text);
+              background: var(--karte);
+              color: var(--knopf);
           }
 
-          /* Primärer Button: hell in der Bereichsfarbe, dunkle Schrift */
+          /* Hauptaktion in der gedeckten Bereichsfarbe mit weißem Text. */
           div.stButton button[kind="primary"] {
               background-color: var(--knopf) !important;
               color: var(--knopf-text) !important;
               border-radius: 12px !important;
               font-weight: 700 !important;
               border: none !important;
-              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.30);
+              box-shadow: 0 2px 4px rgba(42, 59, 47, 0.10);
           }
-          /* Die Beschriftung sitzt in einem eigenen <p>, das sonst die
-             weiße Bereichsschrift erbt - dann wäre sie auf dem hellen
-             Knopf kaum lesbar. */
-          div[class*="st-key-bereich_"] div.stButton button[kind="primary"] p {
+          div.stButton button[kind="primary"] p {
               color: var(--knopf-text) !important;
           }
           div.stButton button[kind="primary"]:hover {
@@ -1704,16 +1712,26 @@ if True:
               font-weight: 600 !important;
           }
 
-          /* Sekundäre Buttons IN den Bereichen: dunkel mit weißer Schrift */
+          /* Nebenaktionen: helle Flächen und dunkle Schrift. */
           div[class*="st-key-bereich_"] div.stButton button[kind="secondary"] {
-              background-color: rgba(0, 0, 0, 0.30) !important;
-              color: #ffffff !important;
-              border: 1px solid rgba(255, 255, 255, 0.40) !important;
+              background-color: #ffffff !important;
+              color: var(--text) !important;
+              border: 1px solid #b9c7bd !important;
           }
           div[class*="st-key-bereich_"] div.stButton button[kind="secondary"]:hover {
-              background-color: rgba(255, 255, 255, 0.18) !important;
+              background-color: var(--karte) !important;
               border-color: var(--knopf) !important;
-              color: #ffffff !important;
+              color: var(--text) !important;
+          }
+          div.stButton button:focus-visible,
+          div.stDownloadButton button:focus-visible {
+              outline: 3px solid var(--knopf);
+              outline-offset: 3px;
+          }
+          @media (prefers-reduced-motion: reduce) {
+              .serie-flamme {
+                  animation: none !important;
+              }
           }
 
           /* Lupen-Buttons unter den Kacheln schließen bündig an die Kachel an */
@@ -1731,8 +1749,8 @@ if True:
               padding: 12px 16px;
               margin: 14px 0 8px 0;
               border-radius: 16px;
-              background: rgba(0, 0, 0, 0.30);
-              border: 1px solid rgba(255, 255, 255, 0.30);
+              background: var(--karte);
+              border: 1px solid var(--rand);
           }
           .serie-flamme {
               font-size: 46px;
@@ -1856,18 +1874,16 @@ if True:
               }
           }
 
-          /* Download-Knöpfe in den Bereichen wie die übrigen sekundären
-             Knöpfe: dunkel mit weißer Schrift (sonst weiße Schrift auf
-             weißem Grund) */
+          /* Download-Knöpfe wie die übrigen Nebenaktionen. */
           div[class*="st-key-bereich_"] div.stDownloadButton button {
-              background-color: rgba(0, 0, 0, 0.30) !important;
-              color: #ffffff !important;
-              border: 1px solid rgba(255, 255, 255, 0.40) !important;
+              background-color: #ffffff !important;
+              color: var(--text) !important;
+              border: 1px solid #b9c7bd !important;
               border-radius: 12px !important;
               font-weight: 600 !important;
           }
           div[class*="st-key-bereich_"] div.stDownloadButton button:hover {
-              background-color: rgba(255, 255, 255, 0.18) !important;
+              background-color: var(--karte) !important;
               border-color: var(--knopf) !important;
           }
 
@@ -2697,7 +2713,7 @@ if True:
             st.info("Keine Schritte-Einträge in diesem Zeitraum.")
           else:
             st.altair_chart(
-                _dunkles_diagramm(schritte_verlauf, "Schritte"),
+                _vital_diagramm(schritte_verlauf, "Schritte"),
                 width="stretch",
                 theme=None,
             )
@@ -2708,7 +2724,7 @@ if True:
             st.info("Keine Gewicht-Einträge in diesem Zeitraum.")
           else:
             st.altair_chart(
-                _dunkles_diagramm(gewicht_verlauf, "Gewicht", [40, 90]),
+                _vital_diagramm(gewicht_verlauf, "Gewicht", [40, 90]),
                 width="stretch",
                 theme=None,
             )
@@ -3517,4 +3533,5 @@ if True:
         if arsenal_cancelled:
           st.session_state.arsenal_form_aktiv = False
           st.rerun()
+
 
