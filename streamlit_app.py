@@ -385,7 +385,7 @@ def sonstiges_dialog(state_key):
       st.rerun()
 
 
-def handle_sonstiges_unterkategorie(selected_unterkat, cat_key):
+def handle_sonstiges_unterkategorie(selected_unterkat, cat_key, *, inline=False):
   """Wenn 'Sonstiges' gewählt ist, öffnet dies (einmalig, bis wieder
   gewechselt wird) das Dialog-Fenster zur Texteingabe und liefert den
   eingegebenen Freitext als tatsächliche Unterkategorie zurück."""
@@ -395,6 +395,12 @@ def handle_sonstiges_unterkategorie(selected_unterkat, cat_key):
   if selected_unterkat != "Sonstiges":
     st.session_state[done_key] = False
     return selected_unterkat
+
+  if inline:
+    freitext = st.text_area(
+        "Was genau hast du gemacht?", key=state_key,
+    ).strip()
+    return freitext or "Sonstiges"
 
   if not st.session_state.get(done_key, False):
     sonstiges_dialog(state_key)
@@ -2174,10 +2180,10 @@ if True:
         st.session_state.eintrag_modal_aktiv = True
         st.rerun()
 
-    # Formular für Eintrag (außerhalb des Kastens)
-    if st.session_state.get("eintrag_modal_aktiv", False):
+    # Das Eingabefenster bleibt unabhängig von der Scrollposition sichtbar.
+    @st.dialog("📝 Neuen Eintrag erfassen", width="large", dismissible=False)
+    def eintrag_dialog():
       with st.container(key="formcard"):
-        st.write("### 📝 Neuen Eintrag erfassen")
         # Kein st.form() hier: Felder innerhalb eines Formulars lösen erst
         # beim Absenden einen Rerun aus, daher würden die Zusatzfelder nicht
         # sofort erscheinen. Stattdessen normale Widgets + eigene Buttons.
@@ -2223,7 +2229,7 @@ if True:
                 key="entry_unterkategorie_ausdauer",
             )
             selected_unterkat = handle_sonstiges_unterkategorie(
-                selected_unterkat, "ausdauer"
+                selected_unterkat, "ausdauer", inline=True
             )
             minuten = st.number_input(
                 "Minuten", min_value=0, max_value=300, value=None,
@@ -2237,7 +2243,7 @@ if True:
                 key="entry_unterkategorie",
             )
             selected_unterkat = handle_sonstiges_unterkategorie(
-                selected_unterkat, "balance"
+                selected_unterkat, "balance", inline=True
             )
             minuten = st.number_input(
                 "Minuten", min_value=0, max_value=300, value=None,
@@ -2251,7 +2257,7 @@ if True:
                 key="entry_unterkategorie_beweglichkeit",
             )
             selected_unterkat = handle_sonstiges_unterkategorie(
-                selected_unterkat, "beweglichkeit"
+                selected_unterkat, "beweglichkeit", inline=True
             )
             minuten = st.number_input(
                 "Minuten", min_value=0, max_value=300, value=None,
@@ -2265,7 +2271,7 @@ if True:
                 key="entry_unterkategorie_kraft",
             )
             selected_unterkat = handle_sonstiges_unterkategorie(
-                selected_unterkat, "kraft"
+                selected_unterkat, "kraft", inline=True
             )
             minuten = st.number_input(
                 "Minuten", min_value=0, max_value=300, value=None,
@@ -2430,7 +2436,9 @@ if True:
           if cancel_btn:
             st.session_state.eintrag_modal_aktiv = False
             st.rerun()
-      st.write("---")
+
+    if st.session_state.get("eintrag_modal_aktiv", False):
+      eintrag_dialog()
 
     # WOCHEN-ANSICHT (3x2 Raster wenn aktiviert)
     if st.session_state.wochen_ansicht_aktiv:
