@@ -2,6 +2,7 @@ import base64
 import math
 import datetime
 from io import BytesIO
+from pathlib import Path
 import altair as alt
 import gspread
 from gspread.utils import rowcol_to_a1
@@ -70,14 +71,24 @@ def bereich_banner(icon, titel, untertitel, bereich):
   )
 
 
+# Repository-Pfad statt Arbeitsordner: funktioniert auch auf Streamlit Cloud.
+APP_ICON_PATH = Path(__file__).resolve().parent / "assets" / "app-icon.png"
+with Image.open(APP_ICON_PATH) as icon_datei:
+  APP_ICON = icon_datei.copy()
+
 # Seiten-Konfiguration
 st.set_page_config(
-    page_title="Sport-Tagebuch", page_icon="🏃‍♀️", layout="centered"
+    page_title="Sport-Tagebuch", page_icon=APP_ICON, layout="centered"
 )
+
+logo_spalte, titel_spalte = st.columns([1, 5], vertical_alignment="center")
+with logo_spalte:
+  st.image(APP_ICON, width=72)
+with titel_spalte:
+  st.title("Sport-Tagebuch")
 
 # --- Anmeldung: ohne Google-Login keine Nutzung der App -------------
 if not st.user.is_logged_in:
-  st.title("🏃‍♀️ Sport-Tagebuch")
   st.write(
       "Bitte melde dich mit deinem Google-Konto an, um deine "
       "Trainingsdaten zu sehen und zu speichern."
@@ -678,8 +689,21 @@ ERNAEHRUNG_OPTIONEN = {
     "Umgesetzt": "🟢",
     "Teilweise umgesetzt": "🟡",
     "Nicht umgesetzt": "🔴",
-    "Bewusst ausgelassen": "🔵",
+    "Bewusst ausgelassen": "🔵 Intervallfasten",
 }
+
+# Anzeigenamen getrennt von gespeicherten Statuswerten halten.
+ERNAEHRUNG_STATUS_TEXTE = {
+    "Umgesetzt": "Umgesetzt",
+    "Teilweise umgesetzt": "Teilweise umgesetzt",
+    "Nicht umgesetzt": "Nicht umgesetzt",
+    "Bewusst ausgelassen": "Intervallfasten / Mahlzeit ausgelassen",
+    "Ausgelassen": "Intervallfasten / Mahlzeit ausgelassen",
+}
+ERNAEHRUNG_LEGENDE = (
+    "🟢 umgesetzt · 🟡 teilweise · 🔴 nicht umgesetzt · "
+    "🔵 Intervallfasten / Mahlzeit ausgelassen"
+)
 
 # Status -> Farbe (Ring-Bögen, Wochenraster). "Ausgelassen" ist der alte
 # Wert aus früheren Einträgen und wird wie "Bewusst ausgelassen" behandelt.
@@ -713,10 +737,11 @@ def ernaehrung_tagesformular(datum):
   )
   vorhanden = df_alt[ist_ernaehrung_tag]
 
-  st.caption(
-      "🟢 umgesetzt · 🟡 teilweise · 🔴 nicht umgesetzt · "
-      "🔵 bewusst ausgelassen"
+  st.info(
+      "🔵 Blau bedeutet: Intervallfasten / Mahlzeit bewusst ausgelassen. "
+      "Diese Auswahl zählt wie bisher als geplant für dein Tages- und Wochenziel."
   )
+  st.caption(ERNAEHRUNG_LEGENDE)
 
   gewaehlt = {}
   for zeit in ERNAEHRUNG_TAGESZEITEN:
@@ -749,6 +774,8 @@ def ernaehrung_tagesformular(datum):
           horizontal=True,
           label_visibility="collapsed",
       )
+    if status in ("Bewusst ausgelassen", "Ausgelassen"):
+      st.caption("🔵 Intervallfasten – diese Mahlzeit wird bewusst ausgelassen.")
     notiz = st.text_input(
         f"Notiz {zeit}",
         value=notiz_alt,
@@ -917,17 +944,18 @@ def render_ernaehrung_wochenraster_html(start_der_woche):
     for datum_str in tage_daten:
       status = status_je_feld.get((datum_str, zeit))
       farbe = ERNAEHRUNG_STATUS_FARBEN.get(status, ERNAEHRUNG_LEER_FARBE)
+      beschriftung = ERNAEHRUNG_STATUS_TEXTE.get(status, "Noch kein Eintrag")
       zeilen += (
           f"<td style='text-align:center; padding:3px 0;'>"
           f"<span style='display:inline-block; width:18px; height:18px;"
-          f" border-radius:50%; background:{farbe};'></span></td>"
+          f" border-radius:50%; background:{farbe};' role='img'"
+          f" aria-label='{beschriftung}' title='{beschriftung}'></span></td>"
       )
     zeilen += "</tr>"
 
   legende = (
-      "<div style='font-size:11px; opacity:0.7; margin-top:6px;'>"
-      "🟢 umgesetzt · 🟡 teilweise · 🔴 nicht umgesetzt · "
-      "🔵 bewusst ausgelassen</div>"
+      "<div style='font-size:12px; margin-top:8px;'>"
+      f"{ERNAEHRUNG_LEGENDE}</div>"
   )
   return (
       "<div class='ernaehrung-raster' style='background:#f5f7f3; border-radius:12px;"
@@ -2108,6 +2136,8 @@ if True:
             box_height=98, icon_font_size=22, ring_size=28,
             click_key=("heute", "Gesamtbefinden"), kat_name="Gesamtbefinden",
         )
+
+      st.caption("Ernährung: 🔵 Blau = Intervallfasten / Mahlzeit ausgelassen.")
 
       # Flammenzähler: Tage in Folge mit allen drei Mahlzeiten
       _serie, _rekord, _heute_ok = berechne_serie(df, heute)
@@ -3541,5 +3571,6 @@ if True:
         if arsenal_cancelled:
           st.session_state.arsenal_form_aktiv = False
           st.rerun()
+
 
 
