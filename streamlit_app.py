@@ -2207,6 +2207,11 @@ if True:
           use_container_width=True,
           type="primary",
       ):
+        # Die angeklickte Heute-/Wochenkachel gibt die Kategorie vor.
+        # Nur beim Öffnen setzen, damit spätere Änderungen im Dialog bleiben.
+        detail_ansicht = st.session_state.get("detail_ansicht")
+        if detail_ansicht is not None:
+          st.session_state["entry_kategorie"] = detail_ansicht[1]
         st.session_state.eintrag_modal_aktiv = True
         st.rerun()
 
@@ -2650,41 +2655,47 @@ if True:
     )
     with st.container(key="vitalcard"):
 
-      # Hinweis: Alle Zahlen-Argumente sind hier bewusst Kommazahlen (0.0,
-      # 250.0, 1.0). Streamlit erlaubt bei number_input keine Mischung aus
-      # Ganz- und Kommazahlen; die aus dem Sheet geladene Körpergröße ist
-      # eine Kommazahl (float) und hätte sonst mit min_value=0 (int) einen
-      # Fehler ausgelöst.
-      if st.session_state.koerpergroesse_cm is None:
+      gespeicherte_groesse = st.session_state.koerpergroesse_cm
+      if (
+          gespeicherte_groesse is None
+          or st.session_state.get("groesse_bearbeiten", False)
+      ):
+        # Kommazahlen verwenden, da Google Sheets die Größe als float lädt.
         groesse_input = st.number_input(
             "Körpergröße (cm) – einmalig für BMI-Berechnung",
-            min_value=0.0,
+            min_value=1.0,
             max_value=250.0,
-            value=None,
+            value=(float(gespeicherte_groesse)
+                   if gespeicherte_groesse is not None else None),
             step=1.0,
             key="groesse_input",
         )
-        if groesse_input:
-          st.session_state.koerpergroesse_cm = groesse_input
-          _speichere_koerpergroesse(groesse_input)
+        if st.button(
+            "Körpergröße speichern", key="groesse_speichern",
+            type="primary", disabled=groesse_input is None,
+        ):
+          try:
+            _speichere_koerpergroesse(groesse_input)
+          except Exception:
+            st.error(
+                "Die Körpergröße konnte nicht gespeichert werden. "
+                "Deine Eingabe bleibt erhalten. Bitte versuche es erneut."
+            )
+          else:
+            st.session_state.koerpergroesse_cm = groesse_input
+            st.session_state.groesse_bearbeiten = False
+            st.rerun()
+        if gespeicherte_groesse is not None and st.button(
+            "Abbrechen", key="groesse_abbrechen"
+        ):
+          st.session_state.groesse_bearbeiten = False
           st.rerun()
       else:
-        with st.expander(
-            f"Körpergröße: {st.session_state.koerpergroesse_cm:.0f} cm "
-            "(ändern)"
-        ):
-          groesse_input = st.number_input(
-              "Körpergröße (cm) – einmalig für BMI-Berechnung",
-              min_value=0.0,
-              max_value=250.0,
-              value=float(st.session_state.koerpergroesse_cm),
-              step=1.0,
-              key="groesse_input",
-          )
-          neue_groesse = groesse_input if groesse_input else None
-          if neue_groesse != st.session_state.koerpergroesse_cm:
-            st.session_state.koerpergroesse_cm = neue_groesse
-            _speichere_koerpergroesse(neue_groesse)
+        st.caption(f"Körpergröße: {gespeicherte_groesse:g} cm")
+        if st.button("Ändern", key="groesse_aendern"):
+          st.session_state["groesse_input"] = float(gespeicherte_groesse)
+          st.session_state.groesse_bearbeiten = True
+          st.rerun()
 
       bmi_wert = None
       if gewicht_heute and st.session_state.koerpergroesse_cm:
@@ -3571,6 +3582,7 @@ if True:
         if arsenal_cancelled:
           st.session_state.arsenal_form_aktiv = False
           st.rerun()
+
 
 
 
