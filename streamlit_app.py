@@ -10,6 +10,9 @@ import pandas as pd
 import streamlit as st
 from google.oauth2.service_account import Credentials
 from PIL import Image
+from vital_charts import (
+    VITAL_EINHEITEN, vital_verlaufsdaten, vital_vergleichsdaten, vital_vergleich_spec,
+)
 
 # --- Farbpalette ----------------------------------------------------
 # Helle Grundflächen und ruhige Bereichsfarben. Die bewährten Ampelfarben
@@ -1376,7 +1379,8 @@ if "vital_import_aktiv" not in st.session_state:
 def _vital_diagramm(daten, spalte, wertebereich=None):
   """Kontrastreiche blaue Linie und dunkle Achsen auf der hellen Karte."""
   y_skala = (
-      alt.Scale(domain=wertebereich) if wertebereich else alt.Scale(zero=True)
+      alt.Scale(domain=wertebereich, zero=False)
+      if wertebereich else alt.Scale(zero=spalte == "Schritte")
   )
   return (
       alt.Chart(daten)
@@ -2703,7 +2707,7 @@ if True:
         bmi_wert = gewicht_heute / (groesse_m**2)
 
       zeitraum_auswahl = st.selectbox(
-          "Zeitraum für die Ø-Werte",
+          "Zeitraum für Übersicht und Verlauf",
           ["Woche", "Monat", "3 Monate", "6 Monate", "Jahr"],
           key="vital_zeitraum_auswahl",
       )
@@ -2744,45 +2748,83 @@ if True:
           )
         with m_col6:
           st.metric(
-              "VO2max (aktuell)",
+              "VO₂max (aktuell)",
               f"{vo2max_aktuell:.1f}" if vo2max_aktuell is not None else "–",
           )
 
       st.write("")
       st.markdown(f"#### 📈 Verlauf ({zeitraum_auswahl})")
       verlauf_df = _vital_zeitraum_df(zeitraum_auswahl)
-      if verlauf_df.empty:
-        st.info("Noch keine Einträge für diesen Zeitraum.")
+      messwerte = vital_verlaufsdaten(
+          verlauf_df, st.session_state.koerpergroesse_cm
+      )
+      if messwerte.empty:
+        st.info("Noch keine Messwerte für diesen Zeitraum.")
       else:
-        chart_col1, chart_col2 = st.columns(2)
-        with chart_col1:
-          st.caption("Schritte")
-          schritte_verlauf = verlauf_df.dropna(subset=["Schritte"])
-          if schritte_verlauf.empty:
-            st.info("Keine Schritte-Einträge in diesem Zeitraum.")
-          else:
-            st.altair_chart(
-                _vital_diagramm(schritte_verlauf, "Schritte"),
-                width="stretch",
-                theme=None,
+        ansicht = st.radio(
+            "Darstellung", ["Gemeinsamer Verlauf", "Einzelne Messwerte"],
+            horizontal=True, key="vital_verlauf_ansicht",
+        )
+        if ansicht == "Gemeinsamer Verlauf":
+          vergleich = vital_vergleichsdaten(messwerte)
+          st.caption(
+              "0 % = erster positiver Messwert je Messgröße im gewählten "
+              "Zeitraum. Punkte zeigen erfasste bzw. berechnete Werte; "
+              "Linien verbinden die Einträge. "
+              "Tippe einen Punkt für Originalwerte oder die Legende zur Auswahl."
+          )
+          if vergleich.empty:
+            st.info(
+                "Für den Prozentvergleich fehlt ein positiver Startwert. "
+                "Unter „Einzelne Messwerte“ siehst du die Originalwerte."
             )
-        with chart_col2:
-          st.caption("Gewicht (kg)")
-          gewicht_verlauf = verlauf_df.dropna(subset=["Gewicht"])
-          if gewicht_verlauf.empty:
-            st.info("Keine Gewicht-Einträge in diesem Zeitraum.")
           else:
-            st.altair_chart(
-                _vital_diagramm(gewicht_verlauf, "Gewicht", [40, 90]),
-                width="stretch",
-                theme=None,
+            st.vega_lite_chart(
+                spec=vital_vergleich_spec(vergleich),
+                width="stretch", theme=None,
             )
+          ohne_referenz = [
+              name for name in messwerte["Messgröße"].unique()
+              if name not in vergleich["Messgröße"].values
+          ]
+          if ohne_referenz:
+            st.caption("Ohne positiven Startwert: " + ", ".join(ohne_referenz))
+        else:
+          for namen in (("Schritte", "Gewicht"), ("VO₂max", "BMI")):
+            for spalte, name in zip(st.columns(2), namen):
+              with spalte:
+                st.caption(f"{name} ({VITAL_EINHEITEN[name]})")
+                reihe = messwerte[messwerte["Messgröße"] == name]
+                if reihe.empty:
+                  st.info("Keine Messwerte in diesem Zeitraum.")
+                else:
+                  st.altair_chart(
+                      _vital_diagramm(
+                          reihe[["Datum", "Wert"]].rename(columns={"Wert": name}),
+                          name,
+                      ),
+                      width="stretch", theme=None,
+                  )
+        fehlend = [
+            name for name in VITAL_EINHEITEN
+            if name not in messwerte["Messgröße"].values
+        ]
+        if fehlend:
+          st.caption("Noch keine Werte im gewählten Zeitraum: " + ", ".join(fehlend))
+        if st.session_state.koerpergroesse_cm is None:
+          st.caption("Für den BMI bitte oben einmalig deine Körpergröße speichern.")
+        else:
+          st.caption(
+              "Der BMI wird aus Gewicht und gespeicherter Körpergröße berechnet. "
+              "Bei gleicher Körpergröße folgt er im Prozentvergleich dem Gewicht "
+              "(BMI: gestrichelt). Zeitgleiche Verläufe allein belegen keine Ursache."
+          )
 
       st.write("")
       col_v1, col_v2 = st.columns(2)
       with col_v1:
         if st.button(
-            "＋ Schritte/Gewicht eintragen",
+            "＋ Vitalwerte eintragen",
             key="btn_open_vital_form",
             type="primary",
             use_container_width=True,
@@ -2812,7 +2854,7 @@ if True:
             step=0.1, key="vital_gewicht_input",
         )
         v_vo2max = st.number_input(
-            "VO2max (ml/kg/min) – optional, meist von der Uhr geschätzt",
+            "VO₂max (ml/kg/min) – optional, meist von der Uhr geschätzt",
             min_value=0.0, max_value=100.0, value=None,
             step=0.1, key="vital_vo2max_input",
         )
@@ -3582,6 +3624,7 @@ if True:
         if arsenal_cancelled:
           st.session_state.arsenal_form_aktiv = False
           st.rerun()
+
 
 
 
